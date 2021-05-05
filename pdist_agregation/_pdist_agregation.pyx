@@ -207,6 +207,7 @@ cdef int _parallel_knn_single_chunking(
 ) nogil except -1:
     cdef:
         integral n_samples_chunk = chunk_size / X.shape[1]
+        integral k = knn_indices.shape[1]
 
         integral X_n_samples_chunk = min(X.shape[0], n_samples_chunk)
         integral X_n_full_chunks = X.shape[0] // X_n_samples_chunk
@@ -218,14 +219,11 @@ cdef int _parallel_knn_single_chunking(
         integral n_chunks = X_n_chunks
         integral num_threads = min(n_chunks, openmp.omp_get_max_threads())
 
-        integral idx = 0
-        integral j = 0
-        integral i_chunk = 0
-        integral k = knn_indices.shape[1]
-
         integral X_start, X_end
-        integral X_chunk_idx
+        integral X_chunk_idx, idx
+
         floating *dist_middle_terms
+        floating *heap_red_distances
 
     with nogil, parallel(num_threads=num_threads):
         # Thread local buffers
@@ -280,6 +278,7 @@ cdef int _parallel_knn_double_chunking(
 ) nogil except -1:
     cdef:
         integral n_samples_chunk = chunk_size / X.shape[1]
+        integral k = knn_indices.shape[1]
 
         integral X_n_samples_chunk = min(X.shape[0], n_samples_chunk)
         integral X_n_full_chunks = X.shape[0] // X_n_samples_chunk
@@ -296,15 +295,11 @@ cdef int _parallel_knn_double_chunking(
         integral n_chunks = X_n_chunks * Y_n_chunks
         integral num_threads = min(n_chunks, openmp.omp_get_max_threads())
 
-        integral idx = 0
-        integral j = 0
-        integral i_chunk = 0
-        integral k = knn_indices.shape[1]
-
         integral X_start, X_end, Y_start, Y_end
-        integral X_chunk_idx, Y_chunk_idx
+        integral X_chunk_idx, Y_chunk_idx, idx
 
         floating *dist_middle_terms
+        floating *heap_red_distances
 
     with nogil, parallel(num_threads=num_threads):
         # Thread local buffers
