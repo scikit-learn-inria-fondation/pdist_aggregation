@@ -8,14 +8,12 @@ cimport numpy as np
 cimport openmp
 
 from libc.stdlib cimport malloc, free
-from libc.string cimport memset
-from libc.stdio cimport printf
 from cython.parallel cimport prange, parallel
 from cython cimport floating, integral
 
-# TODO: Best size found by a quick tuning, can be improved
+# TODO: Set with a quick tuning, can be improved
 DEF CHUNK_SIZE = 4096
-DEF INF = 1e19
+DEF FLOAT_INF = 1e36
 
 from sklearn.utils._cython_blas cimport _gemm, BLAS_Order, BLAS_Trans
 from sklearn.utils._cython_blas cimport ColMajor, RowMajor, Trans, NoTrans
@@ -235,7 +233,7 @@ cdef int _parallel_knn_single_chunking(
         for X_chunk_idx in prange(X_n_chunks, schedule='static'):
             # We reset the heap between X chunks (memset isn't suitable here)
             for idx in range(X_n_samples_chunk * k):
-                heap_red_distances[idx] = INF
+                heap_red_distances[idx] = FLOAT_INF
 
             X_start = X_chunk_idx * X_n_samples_chunk
             if X_chunk_idx == X_n_chunks - 1 and X_n_samples_rem > 0:
@@ -311,7 +309,7 @@ cdef int _parallel_knn_double_chunking(
         for X_chunk_idx in prange(X_n_chunks, schedule='static'):
             # We reset the heap between X chunks (memset isn't suitable here)
             for idx in range(X_n_samples_chunk * k):
-                heap_red_distances[idx] = INF
+                heap_red_distances[idx] = FLOAT_INF
 
             X_start = X_chunk_idx * X_n_samples_chunk
             if X_chunk_idx == X_n_chunks - 1 and X_n_samples_rem > 0:
@@ -363,6 +361,7 @@ def parallel_knn(
     integral chunk_size = CHUNK_SIZE,
     bint use_chunks_on_Y = True,
 ):
+    # TODO: we could use uint32 here, working up to 4,294,967,295 indices
     int_dtype = np.int32 if integral is int else np.int64
     float_dtype = np.float32 if floating is float else np.float64
     cdef:
