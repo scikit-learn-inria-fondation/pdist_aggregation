@@ -1,8 +1,11 @@
 # cython: language_level=3
-# cython: profile=True
 # cython: cdivision=True
 # cython: boundscheck=False
 # cython: wraparound=False
+# cython: profile=True
+# cython: linetrace=True
+# cython: binding=True
+# distutils: define_macros=CYTHON_TRACE_NOGIL=1
 import numpy as np
 cimport numpy as np
 cimport openmp
