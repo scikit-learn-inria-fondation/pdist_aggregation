@@ -235,8 +235,9 @@ cdef int _parallel_knn_single_chunking(
         heap_red_distances = <floating*> malloc(X_n_samples_chunk * k * sizeof(floating))
 
         for X_chunk_idx in prange(X_n_chunks, schedule='static'):
-            # We reset the heap between X chunks
-            memset(heap_red_distances, <integral> INF, X_n_samples_chunk * k * sizeof(floating))
+            # We reset the heap between X chunks (memset isn't suitable here)
+            for idx in range(X_n_samples_chunk * k):
+                heap_red_distances[idx] = INF
 
             X_start = X_chunk_idx * X_n_samples_chunk
             if X_chunk_idx == X_n_chunks - 1 and X_n_samples_rem > 0:
@@ -313,8 +314,9 @@ cdef int _parallel_knn_double_chunking(
         heap_red_distances = <floating*> malloc(X_n_samples_chunk * k * sizeof(floating))
 
         for X_chunk_idx in prange(X_n_chunks, schedule='static'):
-            # We reset the heap between X chunks
-            memset(heap_red_distances, <integral> INF, X_n_samples_chunk * k * sizeof(floating))
+            # We reset the heap between X chunks (memset isn't suitable here)
+            for idx in range(X_n_samples_chunk * k):
+                heap_red_distances[idx] = INF
 
             X_start = X_chunk_idx * X_n_samples_chunk
             if X_chunk_idx == X_n_chunks - 1 and X_n_samples_rem > 0:
