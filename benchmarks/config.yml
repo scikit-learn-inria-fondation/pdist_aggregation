@@ -9,17 +9,31 @@ estimators:
     estimator: nn.NearestNeighbors
     chunk: True
 datasets:
+  # X_train taller
   - n_samples_train: 1e6
     n_samples_test: 1e3
     n_features: 50
   - n_samples_train: 1e6
     n_samples_test: 1e3
     n_features: 1e2
-  - n_samples_train: 1e6
-    n_samples_test: 1e3
-    n_features: 10e
+
+  # X_test taller
+  - n_samples_train: 1e3
+    n_samples_test: 1e6
+    n_features: 50
+  - n_samples_train: 1e3
+    n_samples_test: 1e6
+    n_features: 1e2
+
+  # X_test and X_train larger
+  - n_samples_train: 1e4
+    n_samples_test: 1e2
+    n_features: 10e3
 chunk_sizes:
+  - 1024
+  - 2048
   - 4096
+  - 8192
 n_neighbors:
   - 1
   - 10
