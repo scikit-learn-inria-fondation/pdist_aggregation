@@ -18,19 +18,20 @@ N_TRIALS = 10
 one_GiB = 1e9
 benchmarks = pd.DataFrame()
 
-for estimator in estimators:
-    name, estimator, chunk = estimator.values()
-    splitted_path = estimator.split(".")
-    module, class_name = ".".join(splitted_path[:-1]), splitted_path[-1]
-    estim_class = getattr(importlib.import_module(module), class_name)
 
-    for dataset in datasets:
-        for trial in range(N_TRIALS):
-            dataset = {k: int(float(v)) for k, v in dataset.items()}
-            ns_train, ns_test, nf = dataset.values()
-            X_train = np.random.rand(ns_train, nf)
-            X_test = np.random.rand(ns_test, nf)
-            bytes_processed_data = X_train.nbytes + X_test.nbytes
+for dataset in datasets:
+    for trial in range(N_TRIALS):
+        dataset = {k: int(float(v)) for k, v in dataset.items()}
+        ns_train, ns_test, nf = dataset.values()
+        X_train = np.random.rand(ns_train, nf)
+        X_test = np.random.rand(ns_test, nf)
+        bytes_processed_data = X_train.nbytes + X_test.nbytes
+
+        for estimator in estimators:
+            name, estimator, chunk = estimator.values()
+            splitted_path = estimator.split(".")
+            module, class_name = ".".join(splitted_path[:-1]), splitted_path[-1]
+            estim_class = getattr(importlib.import_module(module), class_name)
 
             for k in n_neighbors:
                 chunk_sizes = CHUNK_SIZES if chunk else [0]
