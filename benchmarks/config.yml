@@ -1,10 +1,4 @@
 estimators:
-  - name: sklearn
-    estimator: sklearn.neighbors.NearestNeighbors
-    chunk: False
-  - name: daal4py
-    estimator: daal4py.sklearn.neighbors.NearestNeighbors
-    chunk: False
   - name: "New (single chunking)"
     estimator: nn.NearestNeighborsSingleChunking
     chunk: True
@@ -31,9 +25,6 @@ datasets:
   - n_samples_train: 1e3
     n_samples_test: 1e6
     n_features: 1e2
-  - n_samples_train: 1e1
-    n_samples_test: 1e3
-    n_features: 500
 
 chunk_sizes:
   - 2048
