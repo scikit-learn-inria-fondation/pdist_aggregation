@@ -6,20 +6,33 @@
 # cython: linetrace=True
 # cython: binding=True
 # distutils: define_macros=CYTHON_TRACE_NOGIL=1
+import os
 import numpy as np
 cimport numpy as np
 cimport openmp
+from joblib import cpu_count
 
 from libc.stdlib cimport malloc, free
+from libc.math cimport sqrt, floor
 from cython.parallel cimport prange, parallel
 from cython cimport floating, integral
 
 # TODO: Set with a quick tuning, can be improved
-DEF CHUNK_SIZE = 4096
+DEF WORKING_MEMORY = 4_000_000  # bytes
+
 DEF FLOAT_INF = 1e36
 
 from sklearn.utils._cython_blas cimport _gemm, BLAS_Order, BLAS_Trans
 from sklearn.utils._cython_blas cimport ColMajor, RowMajor, Trans, NoTrans
+
+cpdef int _openmp_effective_n_threads(n_threads=None):
+    # Taken and adapted from sklearn.utils._openmp_helpers
+    if os.getenv("OMP_NUM_THREADS"):
+        # Fall back to user provided number of threads making it possible
+        # to exceed the number of cpus.
+        return openmp.omp_get_max_threads()
+    else:
+        return min(openmp.omp_get_max_threads(), cpu_count())
 
 ### Heaps utilities
 
@@ -203,12 +216,34 @@ cdef int _parallel_knn_single_chunking(
     floating[:, ::1] X,              # IN
     floating[:, ::1] Y,              # IN
     floating[::1] Y_sq_norms,        # IN
-    integral chunk_size,
+    integral working_memory,
     integral[:, ::1] knn_indices,    # OUT
+    integral effective_n_threads,
 ) nogil except -1:
     cdef:
-        integral n_samples_chunk = chunk_size / X.shape[1]
         integral k = knn_indices.shape[1]
+        integral d = X.shape[1]
+        integral sf = sizeof(floating)
+        integral si = sizeof(floating)
+
+        # Computing n_samples_chunk (n) given the datastructures' sizes:
+        #  - X chunk: n d sf
+        #  - Y chunk: n d sf
+        #  - reduced distances matrix on chunks: n^2 sf
+        #  - squared norms of ys on a Y chunk: n sf
+        #  - heap (k-NN indices  for a chunk of X): n k si
+        #  - heap (red distances for a chunk of X): n k sf
+        #
+        # n is optimal and data structures fits in in W_t, a
+        # thread working memory, iff:
+        #
+        #  n = sup_n {n \in IN | n^2 sf + n (sf (k + 1 + 2 * d) + si k) <= W_t}
+        #
+        # If we set: b = s_f(k + 1 + 2 * d) + s_i k, we get:
+        #
+        #     n = floor ((-b + sqrt(b^2 + 4s_f W_t)) / (2s_f))
+        integral b = sf * (k + 1 + 2 * d) + si * k
+        integral n_samples_chunk = <integral> floor((-b + sqrt(b ** 2 + 4 * sf * working_memory / effective_n_threads)) / (2 * sf))
 
         integral X_n_samples_chunk = min(X.shape[0], n_samples_chunk)
         integral X_n_full_chunks = X.shape[0] // X_n_samples_chunk
@@ -218,7 +253,7 @@ cdef int _parallel_knn_single_chunking(
         integral X_n_chunks = X_n_full_chunks + (X.shape[0] != (X_n_full_chunks * X_n_samples_chunk))
 
         integral n_chunks = X_n_chunks
-        integral num_threads = min(n_chunks, openmp.omp_get_max_threads())
+        integral num_threads = min(n_chunks, effective_n_threads)
 
         integral X_start, X_end
         integral X_chunk_idx, idx
@@ -230,8 +265,8 @@ cdef int _parallel_knn_single_chunking(
         # Thread local buffers
 
         # Temporary buffer for the -2 * X_c.dot(Y_c.T) term
-        dist_middle_terms = <floating*> malloc(Y.shape[0] * X_n_samples_chunk * sizeof(floating))
-        heap_red_distances = <floating*> malloc(X_n_samples_chunk * k * sizeof(floating))
+        dist_middle_terms = <floating*> malloc(Y.shape[0] * X_n_samples_chunk * sf)
+        heap_red_distances = <floating*> malloc(X_n_samples_chunk * k * sf)
 
         for X_chunk_idx in prange(X_n_chunks, schedule='static'):
             # We reset the heap between X chunks (memset isn't suitable here)
@@ -274,12 +309,19 @@ cdef int _parallel_knn_double_chunking(
     floating[:, ::1] X,              # IN
     floating[:, ::1] Y,              # IN
     floating[::1] Y_sq_norms,        # IN
-    integral chunk_size,
+    integral working_memory,
     integral[:, ::1] knn_indices,    # OUT
+    integral effective_n_threads,
 ) nogil except -1:
     cdef:
-        integral n_samples_chunk = chunk_size / X.shape[1]
         integral k = knn_indices.shape[1]
+        integral d = X.shape[1]
+        integral sf = sizeof(floating)
+        integral si = sizeof(floating)
+
+        # See comment above
+        integral b = sf * (k + 1 + 2 * d) + si * k
+        integral n_samples_chunk = <integral> floor((-b + sqrt(b ** 2 + 4 * sf * working_memory / effective_n_threads)) / (2 * sf))
 
         integral X_n_samples_chunk = min(X.shape[0], n_samples_chunk)
         integral X_n_full_chunks = X.shape[0] // X_n_samples_chunk
@@ -294,7 +336,7 @@ cdef int _parallel_knn_double_chunking(
         integral Y_n_chunks = Y_n_full_chunks + (Y.shape[0] != (Y_n_full_chunks * Y_n_samples_chunk))
 
         integral n_chunks = X_n_chunks * Y_n_chunks
-        integral num_threads = min(n_chunks, openmp.omp_get_max_threads())
+        integral num_threads = min(n_chunks, effective_n_threads)
 
         integral X_start, X_end, Y_start, Y_end
         integral X_chunk_idx, Y_chunk_idx, idx
@@ -306,8 +348,8 @@ cdef int _parallel_knn_double_chunking(
         # Thread local buffers
 
         # Temporary buffer for the -2 * X_c.dot(Y_c.T) term
-        dist_middle_terms = <floating*> malloc(Y_n_samples_chunk * X_n_samples_chunk * sizeof(floating))
-        heap_red_distances = <floating*> malloc(X_n_samples_chunk * k * sizeof(floating))
+        dist_middle_terms = <floating*> malloc(Y_n_samples_chunk * X_n_samples_chunk * sf)
+        heap_red_distances = <floating*> malloc(X_n_samples_chunk * k * sf)
 
         for X_chunk_idx in prange(X_n_chunks, schedule='static'):
             # We reset the heap between X chunks (memset isn't suitable here)
@@ -361,7 +403,7 @@ def parallel_knn(
     floating[:, ::1] X,
     floating[:, ::1] Y,
     integral k,
-    integral chunk_size = CHUNK_SIZE,
+    integral working_memory = WORKING_MEMORY,
     bint use_chunks_on_Y = True,
 ):
     # TODO: we could use uint32 here, working up to 4,294,967,295 indices
@@ -371,10 +413,13 @@ def parallel_knn(
         integral[:, ::1] knn_indices = np.full((X.shape[0], k), 0,
                                                dtype=int_dtype)
         floating[::1] Y_sq_norms = np.einsum('ij,ij->i', Y, Y)
+        integral effective_n_threads = _openmp_effective_n_threads()
 
     if use_chunks_on_Y:
-        _parallel_knn_double_chunking(X, Y, Y_sq_norms, chunk_size, knn_indices)
+        _parallel_knn_double_chunking(X, Y, Y_sq_norms, working_memory,
+                                      knn_indices, effective_n_threads)
     else:
-        _parallel_knn_single_chunking(X, Y, Y_sq_norms, chunk_size, knn_indices)
+        _parallel_knn_single_chunking(X, Y, Y_sq_norms, working_memory,
+                                      knn_indices, effective_n_threads)
 
     return np.asarray(knn_indices)

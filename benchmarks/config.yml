@@ -35,14 +35,16 @@ datasets:
     n_samples_test: 1e4
     n_features: 500
 
-chunk_sizes:
-  - 512
-  - 1024
-  - 2048
-  - 4096
-  - 8192
-  - 16384
+working_memories: # [2 ** i for i in range(15, 24)]
+  - 32768
+  - 65536
+  - 131072
+  - 262144
+  - 524288
+  - 1048576
+  - 2097152
+  - 4194304
+  - 8388608
+
 n_neighbors:
-  - 1
   - 10
-  - 100

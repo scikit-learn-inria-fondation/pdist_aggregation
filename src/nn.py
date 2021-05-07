@@ -16,11 +16,11 @@ class NearestNeighbors:
         raise NotImplementedError()
 
     def kneighbors(self, X,
-                   chunk_size=4098,
+                   working_memory=4_000_000,
                    return_distance=False):
         return parallel_knn(X, self.X_,
                             k=self.n_neighbors,
-                            chunk_size=chunk_size,
+                            working_memory=working_memory,
                             use_chunks_on_Y=self.use_chunks_on_Y)
 
 class NearestNeighborsSingleChunking(NearestNeighbors):

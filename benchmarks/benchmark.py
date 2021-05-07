@@ -10,7 +10,7 @@ with open("config.yml", "r") as f:
     config = yaml.full_load(f)
 
 datasets = config["datasets"]
-CHUNK_SIZES = config["chunk_sizes"]
+WORKING_MEMS = config["working_memories"]
 n_neighbors = config["n_neighbors"]
 estimators = config["estimators"]
 
@@ -34,8 +34,8 @@ for dataset in datasets:
             estim_class = getattr(importlib.import_module(module), class_name)
 
             for k in n_neighbors:
-                chunk_sizes = CHUNK_SIZES if chunk else [0]
-                for chunk_size in chunk_sizes:
+                working_memorys = WORKING_MEMS if chunk else [0]
+                for working_memory in working_memorys:
                     nn_instance = estim_class(n_neighbors=k,
                                               algorithm="brute").fit(X_train)
 
@@ -44,7 +44,7 @@ for dataset in datasets:
                         "return_distance": False
                     }
                     if chunk:
-                        knn_kwargs["chunk_size"] = chunk_size
+                        knn_kwargs["working_memory"] = working_memory
 
                     t0_ = time.perf_counter()
                     nn_instance.kneighbors(**knn_kwargs)
@@ -57,7 +57,7 @@ for dataset in datasets:
                         n_samples_train=ns_train,
                         n_samples_test=ns_test,
                         n_features=nf,
-                        chunk_size=chunk_size,
+                        working_memory=working_memory,
                         n_neighbors=k,
                     )
                     row["time_elapsed"] = time_elapsed
