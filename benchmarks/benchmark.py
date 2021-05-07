@@ -14,7 +14,7 @@ CHUNK_SIZES = config["chunk_sizes"]
 n_neighbors = config["n_neighbors"]
 estimators = config["estimators"]
 
-N_TRIALS = 20
+N_TRIALS = 5
 one_GiB = 1e9
 benchmarks = pd.DataFrame()
 
@@ -67,7 +67,7 @@ for dataset in datasets:
                     print("---")
 
                     benchmarks.to_csv(
-                        f"results_{N_TRIALS}_trials.csv",
+                        "results.csv",
                         mode="w+",
                         index=False,
                     )
