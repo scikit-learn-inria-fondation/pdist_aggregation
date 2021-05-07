@@ -158,13 +158,13 @@ cdef int _simultaneous_sort(
 ### K-NN helpers
 
 cdef void _k_closest_on_chunk(
-    floating[:, ::1] X_c,            # IN
-    floating[:, ::1] Y_c,            # IN
-    floating[::1] Y_sq_norms,        # IN
-    floating *dist_middle_terms,     # IN
-    floating *heap_red_distances,    # IN/OUT
-    integral *heap_indices,          # IN/OUT
-    integral k,                      # IN
+    const floating[:, ::1] X_c,            # IN
+    const floating[:, ::1] Y_c,            # IN
+    const floating[::1] Y_sq_norms,        # IN
+    const floating *dist_middle_terms,     # IN
+    floating *heap_red_distances,          # IN/OUT
+    integral *heap_indices,                # IN/OUT
+    integral k,                            # IN
     # ID of the first element of Y_c
     integral Y_idx_offset,
 ) nogil:
@@ -200,11 +200,11 @@ cdef void _k_closest_on_chunk(
 
 
 cdef int _parallel_knn_single_chunking(
-    floating[:, ::1] X,              # IN
-    floating[:, ::1] Y,              # IN
-    floating[::1] Y_sq_norms,        # IN
+    const floating[:, ::1] X,              # IN
+    const floating[:, ::1] Y,              # IN
+    const floating[::1] Y_sq_norms,        # IN
     integral chunk_size,
-    integral[:, ::1] knn_indices,    # OUT
+    integral[:, ::1] knn_indices,          # OUT
 ) nogil except -1:
     cdef:
         integral n_samples_chunk = chunk_size / X.shape[1]
@@ -271,11 +271,11 @@ cdef int _parallel_knn_single_chunking(
 
 
 cdef int _parallel_knn_double_chunking(
-    floating[:, ::1] X,              # IN
-    floating[:, ::1] Y,              # IN
-    floating[::1] Y_sq_norms,        # IN
+    const floating[:, ::1] X,              # IN
+    const floating[:, ::1] Y,              # IN
+    const floating[::1] Y_sq_norms,        # IN
     integral chunk_size,
-    integral[:, ::1] knn_indices,    # OUT
+    integral[:, ::1] knn_indices,          # OUT
 ) nogil except -1:
     cdef:
         integral n_samples_chunk = chunk_size / X.shape[1]
@@ -358,8 +358,8 @@ cdef int _parallel_knn_double_chunking(
 # Python interface
 
 def parallel_knn(
-    floating[:, ::1] X,
-    floating[:, ::1] Y,
+    const floating[:, ::1] X,
+    const floating[:, ::1] Y,
     integral k,
     integral chunk_size = CHUNK_SIZE,
     bint use_chunks_on_Y = True,
