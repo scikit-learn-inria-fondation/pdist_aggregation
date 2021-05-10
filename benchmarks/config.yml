@@ -5,11 +5,8 @@ estimators:
   - name: daal4py
     estimator: daal4py.sklearn.neighbors.NearestNeighbors
     chunk: False
-  - name: "New (single chunking)"
-    estimator: nn.NearestNeighborsSingleChunking
-    chunk: True
-  - name: "New (double chunking)"
-    estimator: nn.NearestNeighborsDoubleChunking
+  - name: "New"
+    estimator: nn.NearestNeighbors
     chunk: True
 
 datasets:
