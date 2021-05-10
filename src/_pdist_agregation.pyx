@@ -272,7 +272,7 @@ cdef int _parallel_knn(
             else:
                 X_end = X_start + X_n_samples_chunk
 
-            for Y_chunk_idx in range(Y_n_chunks):
+            for Y_chunk_idx in prange(Y_n_chunks, schedule='static'):
                 Y_start = Y_chunk_idx * Y_n_samples_chunk
                 if Y_chunk_idx == Y_n_chunks - 1 and Y_n_samples_rem > 0:
                     Y_end = Y_start + Y_n_samples_rem
