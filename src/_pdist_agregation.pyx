@@ -2,10 +2,10 @@
 # cython: cdivision=True
 # cython: boundscheck=False
 # cython: wraparound=False
-# cython: profile=True
-# cython: linetrace=True
-# cython: binding=True
-# distutils: define_macros=CYTHON_TRACE_NOGIL=1
+# cython: profile=False
+# cython: linetrace=False
+# cython: binding=False
+# distutils: define_macros=CYTHON_TRACE_NOGIL=0
 import os
 import numpy as np
 cimport numpy as np
