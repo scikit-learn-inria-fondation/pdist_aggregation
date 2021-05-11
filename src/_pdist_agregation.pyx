@@ -20,6 +20,8 @@ from cython cimport floating, integral
 # TODO: Set with a quick tuning, can be improved
 DEF WORKING_MEMORY = 4_000_000  # bytes
 
+DEF MIN_CHUNK_SAMPLES = 20
+
 DEF FLOAT_INF = 1e36
 
 from sklearn.utils._cython_blas cimport _gemm, BLAS_Order, BLAS_Trans
@@ -243,7 +245,8 @@ cdef int _parallel_knn_single_chunking(
         #
         #     n = floor ((-b + sqrt(b^2 + 4s_f W_t)) / (2s_f))
         integral b = sf * (k + 1 + 2 * d) + si * k
-        integral n_samples_chunk = <integral> floor((-b + sqrt(b ** 2 + 4 * sf * working_memory / effective_n_threads)) / (2 * sf))
+        integral n = <integral> floor((-b + sqrt(b ** 2 + 4 * sf * working_memory / effective_n_threads)) / (2 * sf))
+        integral n_samples_chunk = max(MIN_CHUNK_SAMPLES, n)
 
         integral X_n_samples_chunk = min(X.shape[0], n_samples_chunk)
         integral X_n_full_chunks = X.shape[0] // X_n_samples_chunk
@@ -321,7 +324,8 @@ cdef int _parallel_knn_double_chunking(
 
         # See comment above
         integral b = sf * (k + 1 + 2 * d) + si * k
-        integral n_samples_chunk = <integral> floor((-b + sqrt(b ** 2 + 4 * sf * working_memory / effective_n_threads)) / (2 * sf))
+        integral n = <integral> floor((-b + sqrt(b ** 2 + 4 * sf * working_memory / effective_n_threads)) / (2 * sf))
+        integral n_samples_chunk = max(MIN_CHUNK_SAMPLES, n)
 
         integral X_n_samples_chunk = min(X.shape[0], n_samples_chunk)
         integral X_n_full_chunks = X.shape[0] // X_n_samples_chunk
@@ -421,5 +425,4 @@ def parallel_knn(
     else:
         _parallel_knn_single_chunking(X, Y, Y_sq_norms, working_memory,
                                       knn_indices, effective_n_threads)
-
     return np.asarray(knn_indices)
