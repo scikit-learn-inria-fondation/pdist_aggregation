@@ -215,11 +215,12 @@ cdef void _k_closest_on_chunk(
 
 
 cdef int _parallel_knn(
-    floating[:, ::1] X,              # IN
-    floating[:, ::1] Y,              # IN
-    floating[::1] Y_sq_norms,        # IN
+    floating[:, ::1] X,                  # IN
+    floating[:, ::1] Y,                  # IN
+    floating[::1] Y_sq_norms,            # IN
     integral working_memory,
-    integral[:, ::1] knn_indices,    # OUT
+    integral[:, ::1] knn_indices,        # OUT
+    floating[:, ::1] knn_red_distances,  # OUT
     integral effective_n_threads,
 ) nogil except -1:
     cdef:
@@ -249,60 +250,79 @@ cdef int _parallel_knn(
         integral num_threads = min(n_chunks, effective_n_threads)
 
         integral X_start, X_end, Y_start, Y_end
-        integral X_chunk_idx, Y_chunk_idx, idx
+        integral X_chunk_idx, Y_chunk_idx, idx, jdx
 
-        floating *dist_middle_terms
-        floating *heap_red_distances
+        floating *dist_middle_terms_chunks
+        floating *heap_red_distances_chunks
+        integral *heap_indices_chunks
 
     with nogil, parallel(num_threads=num_threads):
         # Thread local buffers
 
         # Temporary buffer for the -2 * X_c.dot(Y_c.T) term
-        dist_middle_terms = <floating*> malloc(Y_n_samples_chunk * X_n_samples_chunk * sf)
-        heap_red_distances = <floating*> malloc(X_n_samples_chunk * k * sf)
+        dist_middle_terms_chunks = <floating*> malloc(Y_n_samples_chunk *
+                                                      X_n_samples_chunk *
+                                                      sf)
+        heap_red_distances_chunks = <floating*> malloc(X_n_samples_chunk *
+                                                       k *
+                                                       sf)
+        heap_indices_chunks = <integral*> malloc(X_n_samples_chunk * k * sf)
 
-        for X_chunk_idx in prange(X_n_chunks, schedule='static'):
+        for Y_chunk_idx in prange(Y_n_chunks, schedule='static'):
             # We reset the heap between X chunks (memset isn't suitable here)
             for idx in range(X_n_samples_chunk * k):
-                heap_red_distances[idx] = FLOAT_INF
+                heap_red_distances_chunks[idx] = FLOAT_INF
+                heap_indices_chunks[idx] = -1
 
-            X_start = X_chunk_idx * X_n_samples_chunk
-            if X_chunk_idx == X_n_chunks - 1 and X_n_samples_rem > 0:
-                X_end = X_start + X_n_samples_rem
+            Y_start = Y_chunk_idx * Y_n_samples_chunk
+            if Y_chunk_idx == Y_n_chunks - 1 and Y_n_samples_rem > 0:
+                Y_end = Y_start + Y_n_samples_rem
             else:
-                X_end = X_start + X_n_samples_chunk
+                Y_end = Y_start + Y_n_samples_chunk
 
-            for Y_chunk_idx in prange(Y_n_chunks, schedule='static'):
-                Y_start = Y_chunk_idx * Y_n_samples_chunk
-                if Y_chunk_idx == Y_n_chunks - 1 and Y_n_samples_rem > 0:
-                    Y_end = Y_start + Y_n_samples_rem
+            for X_chunk_idx in range(X_n_chunks):
+                X_start = X_chunk_idx * X_n_samples_chunk
+                if X_chunk_idx == X_n_chunks - 1 and X_n_samples_rem > 0:
+                    X_end = X_start + X_n_samples_rem
                 else:
-                    Y_end = Y_start + Y_n_samples_chunk
+                    X_end = X_start + X_n_samples_chunk
 
                 _k_closest_on_chunk(
                     X[X_start:X_end, :],
                     Y[Y_start:Y_end, :],
                     Y_sq_norms[Y_start:Y_end],
-                    dist_middle_terms,
-                    heap_red_distances,
-                    &knn_indices[X_start, 0],
+                    dist_middle_terms_chunks,
+                    heap_red_distances_chunks,
+                    heap_indices_chunks,
                     k,
                     Y_start
                 )
-            # end: for Y_chunk_idx
 
-            # Getting the indices of the k-closest points in
-            # the sorted order
-            for idx in range(X_end - X_start):
-                _simultaneous_sort(
-                    heap_red_distances + idx * k,
-                    &knn_indices[X_start + idx, 0],
-                    k
-                )
+                with gil:
+                    # Synchronising with the main heaps
+                    for idx in range(X_start, X_end):
+                        for jdx in range(k):
+                            _push(
+                                &knn_red_distances[idx, 0],
+                                &knn_indices[idx, 0],
+                                k,
+                                heap_red_distances_chunks[idx * k + jdx],
+                                heap_indices_chunks[idx * k + jdx],
+                            )
+            # end: for X_chunk_idx
 
-        # end: for X_chunk_idx
-        free(dist_middle_terms)
-        free(heap_red_distances)
+        # end: for Y_chunk_idx
+
+        for idx in prange(X.shape[0], schedule='static'):
+            _simultaneous_sort(
+                &knn_red_distances[idx, 0],
+                &knn_indices[idx, 0],
+                k,
+            )
+
+        free(dist_middle_terms_chunks)
+        free(heap_red_distances_chunks)
+        free(heap_indices_chunks)
 
     # end: with nogil, parallel
 
@@ -321,10 +341,12 @@ def parallel_knn(
     cdef:
         integral[:, ::1] knn_indices = np.full((X.shape[0], k), 0,
                                                dtype=int_dtype)
+        floating[:, ::1] knn_red_distances = np.full((X.shape[0], k), FLOAT_INF,
+                                               dtype=float_dtype)
         floating[::1] Y_sq_norms = np.einsum('ij,ij->i', Y, Y)
         integral effective_n_threads = _openmp_effective_n_threads()
 
     _parallel_knn(X, Y, Y_sq_norms, working_memory,
-                  knn_indices, effective_n_threads)
+                  knn_indices, knn_red_distances, effective_n_threads)
 
     return np.asarray(knn_indices)
