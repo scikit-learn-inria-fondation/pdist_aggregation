@@ -173,15 +173,20 @@ cdef int _simultaneous_sort(
 ### K-NN helpers
 
 cdef void _k_closest_on_chunk(
-    const floating[:, ::1] X_c,            # IN
-    const floating[:, ::1] Y_c,            # IN
-    const floating[::1] Y_sq_norms,        # IN
-    const floating *dist_middle_terms,     # IN
-    floating *heaps_red_distances,         # IN/OUT
-    integral *heaps_indices,               # IN/OUT
-    integral k,                            # IN
+    const np.float64_t *X_c,                   # IN
+    const np.float64_t *Y_c,                   # IN
+    const np.float64_t[::1] Y_sq_norms,        # IN
+    const np.float64_t *dist_middle_terms,     # IN
+    np.float64_t *heaps_red_distances,         # IN/OUT
+    integral *heaps_indices,                   # IN/OUT
+    integral k,                                # IN
+    # Shape of X_c
+    integral X_c0,                             # IN
+    integral X_c1,                             # IN
+    # Shape of Y_c (Y_c1 = X_c1)
+    integral Y_c0,                             # IN
     # ID of the first element of Y_c
-    integral Y_idx_offset,
+    integral Y_idx_offset,                     # IN
 ) nogil:
     cdef:
         integral i, j
@@ -197,36 +202,36 @@ cdef void _k_closest_on_chunk(
     #
     # dist_middle_terms = -2 * X_c.dot(Y_c.T)
     _gemm(RowMajor, NoTrans, Trans,
-          X_c.shape[0], Y_c.shape[0], X_c.shape[1],
+          X_c0, Y_c0, X_c1,
           -2.0,
-          &X_c[0, 0], X_c.shape[1],
-          &Y_c[0, 0], X_c.shape[1], 0.0,
-          dist_middle_terms, Y_c.shape[0])
+          X_c, X_c1,
+          Y_c, X_c1, 0.0,
+          dist_middle_terms, Y_c0)
 
     # Computing argmins here
-    for i in range(X_c.shape[0]):
-        for j in range(Y_c.shape[0]):
+    for i in range(X_c0):
+        for j in range(Y_c0):
             _push(heaps_red_distances + i * k,
                   heaps_indices + i * k,
                   k,
                   # reduced distance: - 2 X_c_i.Y_c_j^T + ||Y_c_j||²
-                  dist_middle_terms[i * Y_c.shape[0] + j] + Y_sq_norms[j],
+                  dist_middle_terms[i * Y_c0 + j] + Y_sq_norms[j],
                   j + Y_idx_offset)
 
 
 cdef int _parallel_knn(
-    const floating[:, ::1] X,            # IN
-    const floating[:, ::1] Y,            # IN
-    const floating[::1] Y_sq_norms,      # IN
+    const floating[:, ::1] X,                # IN
+    const floating[:, ::1] Y,                # IN
+    const np.float64_t[::1] Y_sq_norms,      # IN
     integral working_memory,
     integral effective_n_threads,
-    integral[:, ::1] knn_indices,        # OUT
-    floating[:, ::1] knn_red_distances,  # OUT
+    integral[:, ::1] knn_indices,            # OUT
+    np.float64_t[:, ::1] knn_red_distances,  # OUT
 ) nogil except -1:
     cdef:
         integral k = knn_indices.shape[1]
         integral d = X.shape[1]
-        integral sf = sizeof(floating)
+        integral sf = sizeof(np.float64_t)
         integral si = sizeof(integral)
 
         # Computing n_samples_chunk (n) given the datastructures' sizes
@@ -266,18 +271,24 @@ cdef int _parallel_knn(
         integral X_start, X_end, Y_start, Y_end
         integral X_chunk_idx, X_chunk_sharding_idx, Y_chunk_idx, idx, jdx
 
-        floating *dist_middle_terms_chunks
-        floating *heaps_red_distances_chunks
-        integral *heaps_indices_chunks
+        np.float64_t *dist_middle_terms_chunks
+        np.float64_t *heaps_red_distances_chunks
+
+        np.float64_t * X_c_upcasted
+        np.float64_t * Y_c_upcasted
+        integral * heaps_indices_chunks
 
     with nogil, parallel(num_threads=num_threads):
         # Thread local buffers
 
+        X_c_upcasted = <np.float64_t*> malloc(X_n_samples_chunk * d * sf)
+        Y_c_upcasted = <np.float64_t*> malloc(Y_n_samples_chunk * d * sf)
+
         # Temporary buffer for the -2 * X_c.dot(Y_c.T) term
-        dist_middle_terms_chunks = <floating*> malloc(Y_n_samples_chunk *
+        dist_middle_terms_chunks = <np.float64_t*> malloc(Y_n_samples_chunk *
                                                       X_n_samples_chunk *
                                                       sf)
-        heaps_red_distances_chunks = <floating*> malloc(X_n_samples_chunk *
+        heaps_red_distances_chunks = <np.float64_t*> malloc(X_n_samples_chunk *
                                                        k *
                                                        sf)
         heaps_indices_chunks = <integral*> malloc(X_n_samples_chunk * k * sf)
@@ -288,6 +299,10 @@ cdef int _parallel_knn(
                 Y_end = Y_start + Y_n_samples_rem
             else:
                 Y_end = Y_start + Y_n_samples_chunk
+
+            for idx in range(Y_end - Y_start):
+                for jdx in range(d):
+                    Y_c_upcasted[idx * d + jdx] = <np.float64_t> Y[Y_start + idx, jdx]
 
             for X_chunk_idx in range(X_n_chunks):
                 # We reset the heap between X chunks (memset isn't suitable here)
@@ -303,14 +318,24 @@ cdef int _parallel_knn(
                 else:
                     X_end = X_start + X_n_samples_chunk
 
+                for idx in range(X_end - X_start):
+                    for jdx in range(d):
+                        X_c_upcasted[idx * d + jdx] = <np.float64_t> X[X_start + idx, jdx]
+
                 _k_closest_on_chunk(
-                    X[X_start:X_end, :],
-                    Y[Y_start:Y_end, :],
+                    X_c_upcasted,
+                    Y_c_upcasted,
                     Y_sq_norms[Y_start:Y_end],
                     dist_middle_terms_chunks,
                     heaps_red_distances_chunks,
                     heaps_indices_chunks,
                     k,
+                    # Shape of X_c
+                    X_end - X_start,
+                    d,
+                    # Shape of Y_c
+                    Y_end - Y_start,
+                    # Y_idx_offset
                     Y_start,
                 )
 
@@ -328,6 +353,12 @@ cdef int _parallel_knn(
             # end: for X_chunk_idx
 
         # end: for Y_chunk_idx
+        free(X_c_upcasted)
+        free(Y_c_upcasted)
+
+        free(dist_middle_terms_chunks)
+        free(heaps_red_distances_chunks)
+        free(heaps_indices_chunks)
 
         for idx in prange(X.shape[0], schedule='static'):
             _simultaneous_sort(
@@ -335,10 +366,6 @@ cdef int _parallel_knn(
                 &knn_indices[idx, 0],
                 k,
             )
-
-        free(dist_middle_terms_chunks)
-        free(heaps_red_distances_chunks)
-        free(heaps_indices_chunks)
 
     # end: with nogil, parallel
     return n_samples_chunk
@@ -353,13 +380,14 @@ def parallel_knn(
 ):
     # TODO: we could use uint32 here, working up to 4,294,967,295 indices
     int_dtype = np.int32 if integral is int else np.int64
-    float_dtype = np.float32 if floating is float else np.float64
     cdef:
         integral[:, ::1] knn_indices = np.full((X.shape[0], k), 0,
                                                dtype=int_dtype)
-        floating[:, ::1] knn_red_distances = np.full((X.shape[0], k), FLOAT_INF,
-                                               dtype=float_dtype)
-        floating[::1] Y_sq_norms = np.einsum('ij,ij->i', Y, Y)
+        np.float64_t[:, ::1] knn_red_distances = np.full((X.shape[0], k),
+                                                         FLOAT_INF,
+                                                         dtype=np.float64)
+        np.float64_t[::1] Y_sq_norms = np.einsum('ij,ij->i', Y, Y,
+                                                 dtype=np.float64)
         integral effective_n_threads = _openmp_effective_n_threads()
 
     n_samples_chunk = _parallel_knn(X, Y,
