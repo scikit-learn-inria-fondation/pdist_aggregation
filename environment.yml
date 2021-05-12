@@ -1,4 +1,4 @@
-name: pdist_agregation
+name: pdist_aggregation
 channels:
   - conda-forge
 dependencies:
