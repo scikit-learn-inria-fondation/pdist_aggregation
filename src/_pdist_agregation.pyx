@@ -269,11 +269,6 @@ cdef int _parallel_knn(
         heap_indices_chunks = <integral*> malloc(X_n_samples_chunk * k * sf)
 
         for Y_chunk_idx in prange(Y_n_chunks, schedule='static'):
-            # We reset the heap between X chunks (memset isn't suitable here)
-            for idx in range(X_n_samples_chunk * k):
-                heap_red_distances_chunks[idx] = FLOAT_INF
-                heap_indices_chunks[idx] = -1
-
             Y_start = Y_chunk_idx * Y_n_samples_chunk
             if Y_chunk_idx == Y_n_chunks - 1 and Y_n_samples_rem > 0:
                 Y_end = Y_start + Y_n_samples_rem
@@ -281,7 +276,11 @@ cdef int _parallel_knn(
                 Y_end = Y_start + Y_n_samples_chunk
 
             for X_chunk_idx in range(X_n_chunks):
-                X_start = X_chunk_idx * X_n_samples_chunk
+                # We reset the heap between X chunks (memset isn't suitable here)
+                for idx in range(X_n_samples_chunk * k):
+                    heap_red_distances_chunks[idx] = FLOAT_INF
+                    heap_indices_chunks[idx] = -1
+
                 if X_chunk_idx == X_n_chunks - 1 and X_n_samples_rem > 0:
                     X_end = X_start + X_n_samples_rem
                 else:
@@ -300,11 +299,11 @@ cdef int _parallel_knn(
 
                 with gil:
                     # Synchronising with the main heaps
-                    for idx in range(X_start, X_end):
+                    for idx in range(X_end - X_start):
                         for jdx in range(k):
                             _push(
-                                &knn_red_distances[idx, 0],
-                                &knn_indices[idx, 0],
+                                &knn_red_distances[X_start + idx, 0],
+                                &knn_indices[X_start + idx, 0],
                                 k,
                                 heap_red_distances_chunks[idx * k + jdx],
                                 heap_indices_chunks[idx * k + jdx],

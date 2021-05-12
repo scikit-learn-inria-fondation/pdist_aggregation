@@ -12,14 +12,12 @@ from sklearn.neighbors import NearestNeighbors
 def test_correctness(n, d, ratio_train_test, n_neighbors, working_memory, dtype=np.float64):
     np.random.seed(1)
     Y = np.random.rand(int(n * d)).astype(dtype).reshape((-1, d))
-    X = np.random.rand(int(n * d // ratio_train_test)).astype(dtype).reshape((-1, d))
+    X = np.random.rand(int(n * d / ratio_train_test)).astype(dtype).reshape((-1, d))
 
     neigh = NearestNeighbors(n_neighbors=n_neighbors, algorithm='brute')
     neigh.fit(Y)
 
     knn_sk = neigh.kneighbors(X, return_distance=False)
-    knn, _ = parallel_knn(X, Y,
-                       k=n_neighbors,
-                       working_memory=working_memory)
+    knn, _ = parallel_knn(X, Y, k=n_neighbors, working_memory=working_memory)
 
     np.testing.assert_array_equal(knn, knn_sk)
