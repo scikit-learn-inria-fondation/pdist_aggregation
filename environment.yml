@@ -14,3 +14,5 @@ dependencies:
       - --pre
       - --index-url https://pypi.anaconda.org/scipy-wheels-nightly/simple
       - scikit-learn
+      # Build and install pdist_aggregation from source
+      - -e src -v
