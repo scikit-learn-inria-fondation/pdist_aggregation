@@ -1,6 +1,7 @@
 from pdist_agregation import parallel_knn
 from sklearn.utils.validation import check_array
 
+
 class NearestNeighbors:
     def __init__(self, n_neighbors=1, algorithm="brute"):
         self.n_neighbors = n_neighbors
@@ -24,10 +25,12 @@ class NearestNeighbors:
                             working_memory=working_memory,
                             use_chunks_on_Y=self.use_chunks_on_Y)
 
+
 class NearestNeighborsSingleChunking(NearestNeighbors):
     @property
     def use_chunks_on_Y(self):
         return False
+
 
 class NearestNeighborsDoubleChunking(NearestNeighbors):
     @property

@@ -21,7 +21,7 @@ def test_correctness(n, d, ratio_train_test,
     neigh.fit(Y)
 
     knn_sk = neigh.kneighbors(X, return_distance=False)
-    knn = parallel_knn(X, Y,
+    knn, _ = parallel_knn(X, Y,
                        k=n_neighbors,
                        working_memory=working_memory,
                        use_chunks_on_Y=use_chunks_on_Y)

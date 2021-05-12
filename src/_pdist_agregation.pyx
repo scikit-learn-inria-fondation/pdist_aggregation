@@ -396,7 +396,7 @@ cdef int _parallel_knn_double_chunking(
         free(heap_red_distances)
 
     # end: with nogil, parallel
-
+    return n_samples_chunk
 
 # Python interface
 
@@ -417,9 +417,15 @@ def parallel_knn(
         integral effective_n_threads = _openmp_effective_n_threads()
 
     if use_chunks_on_Y:
-        _parallel_knn_double_chunking(X, Y, Y_sq_norms, working_memory,
-                                      knn_indices, effective_n_threads)
+        n_samples_chunk = _parallel_knn_double_chunking(X, Y,
+                                                        Y_sq_norms,
+                                                        working_memory,
+                                                        knn_indices,
+                                                        effective_n_threads)
     else:
-        _parallel_knn_single_chunking(X, Y, Y_sq_norms, working_memory,
-                                      knn_indices, effective_n_threads)
-    return np.asarray(knn_indices)
+        n_samples_chunk = _parallel_knn_single_chunking(X, Y,
+                                                        Y_sq_norms,
+                                                        working_memory,
+                                                        knn_indices,
+                                                        effective_n_threads)
+    return np.asarray(knn_indices), n_samples_chunk
