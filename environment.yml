@@ -16,6 +16,6 @@ dependencies:
       - --index-url https://pypi.anaconda.org/scipy-wheels-nightly/simple
       - scikit-learn
       # Install pdist_agregation from source
-      - -v -e ./src
+      - -e ./src
       # Install cython 3 from upstream directly
-      - -v -e git+https://github.com/cython/cython.git#egg=cython
+      - -e git+https://github.com/cython/cython.git#egg=cython
