@@ -226,25 +226,22 @@ cdef int _parallel_knn_single_chunking(
         integral k = knn_indices.shape[1]
         integral d = X.shape[1]
         integral sf = sizeof(floating)
-        integral si = sizeof(floating)
+        integral si = sizeof(integral)
 
         # Computing n_samples_chunk (n) given the datastructures' sizes:
-        #  - X chunk: n d sf
-        #  - Y chunk: n d sf
         #  - reduced distances matrix on chunks: n^2 sf
-        #  - squared norms of ys on a Y chunk: n sf
         #  - heap (k-NN indices  for a chunk of X): n k si
         #  - heap (red distances for a chunk of X): n k sf
         #
         # n is optimal and data structures fits in in W_t, a
         # thread working memory, iff:
         #
-        #  n = sup_n {n \in IN | n^2 sf + n (sf (k + 1 + 2 * d) + si k) <= W_t}
+        #  n = max_n { n \in IN | n^2 sf + n k(si + sf) <= W_t }
         #
-        # If we set: b = s_f(k + 1 + 2 * d) + s_i k, we get:
+        # If we set: b = k(si + sf), we get:
         #
         #     n = floor ((-b + sqrt(b^2 + 4s_f W_t)) / (2s_f))
-        integral b = sf * (k + 1 + 2 * d) + si * k
+        integral b = k * (si + sf)
         integral n = <integral> floor((-b + sqrt(b ** 2 + 4 * sf * working_memory / effective_n_threads)) / (2 * sf))
         integral n_samples_chunk = max(MIN_CHUNK_SAMPLES, n)
 
@@ -320,10 +317,10 @@ cdef int _parallel_knn_double_chunking(
         integral k = knn_indices.shape[1]
         integral d = X.shape[1]
         integral sf = sizeof(floating)
-        integral si = sizeof(floating)
+        integral si = sizeof(integral)
 
         # See comment above
-        integral b = sf * (k + 1 + 2 * d) + si * k
+        integral b = k * (si + sf)
         integral n = <integral> floor((-b + sqrt(b ** 2 + 4 * sf * working_memory / effective_n_threads)) / (2 * sf))
         integral n_samples_chunk = max(MIN_CHUNK_SAMPLES, n)
 
