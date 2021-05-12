@@ -8,7 +8,14 @@ extensions = [
         "pdist_agregation",
         sources=["_pdist_agregation.pyx"],
         include_dirs=[numpy.get_include()],
-        extra_compile_args=['-fopenmp', '-O3'],
+        extra_compile_args=[
+            '-fopenmp',
+            '-O3',
+            '-ftree-vectorize',
+            '-march=native',
+            '-mtune=native',
+            '-mavx2'
+        ],
         extra_link_args=['-fopenmp'],
         define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
     )
