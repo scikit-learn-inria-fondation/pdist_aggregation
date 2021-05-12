@@ -303,6 +303,7 @@ cdef int _parallel_knn_single_chunking(
         free(heap_red_distances)
 
     # end: with nogil, parallel
+    return n_samples_chunk
 
 
 cdef int _parallel_knn_double_chunking(
