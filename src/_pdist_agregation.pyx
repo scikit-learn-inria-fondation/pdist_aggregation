@@ -229,8 +229,21 @@ cdef int _parallel_knn(
         integral sf = sizeof(floating)
         integral si = sizeof(integral)
 
-        # See comment above
-        integral b = k * (si + sf)
+        # Computing n_samples_chunk (n) given the datastructures' sizes
+        # for the critical zone (_k_closest_on_chunk + global heaps update)
+        #  - reduced distances matrix on chunks: n^2 sf
+        #  - global and thread local heaps (k-NN indices  for a chunk of X): 2 n k si
+        #  - global and thread local heaps (red distances for a chunk of X): 2 n k sf
+        #
+        # n is optimal and data structures fits in in W_t, a
+        # thread working memory, iff:
+        #
+        #  n = max_n { n \in IN | n^2 sf + n 2 k(si + sf) <= W_t }
+        #
+        # If we set: b = 2 * k * (si + sf), we get:
+        #
+        #     n = floor ((-b + sqrt(b^2 + 4s_f W_t)) / (2s_f))
+        integral b = 2 * k * (si + sf)
         integral n = <integral> floor((-b + sqrt(b ** 2 + 4 * sf * working_memory / effective_n_threads)) / (2 * sf))
         integral n_samples_chunk = max(MIN_CHUNK_SAMPLES, n)
 
