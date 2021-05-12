@@ -71,7 +71,7 @@ for dataset in datasets:
                     print("---")
 
                     benchmarks.to_csv(
-                        "results_cython3.csv",
+                        "results.csv",
                         mode="w+",
                         index=False,
                     )
