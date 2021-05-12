@@ -10,6 +10,7 @@ dependencies:
   - seaborn
   - pandas
   - scikit-learn-intelex
+  - pyaml
   - pip
   - pip:
       - --pre
