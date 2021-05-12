@@ -248,8 +248,10 @@ cdef int _parallel_knn(
 
         integral num_threads = min(Y_n_chunks, effective_n_threads)
 
+        integral sharding_offset = X_n_chunks // num_threads
+
         integral X_start, X_end, Y_start, Y_end
-        integral X_chunk_idx, Y_chunk_idx, idx, jdx
+        integral X_chunk_idx, X_chunk_sharding_idx, Y_chunk_idx, idx, jdx
 
         floating *dist_middle_terms_chunks
         floating *heap_red_distances_chunks
@@ -280,7 +282,10 @@ cdef int _parallel_knn(
                     heap_red_distances_chunks[idx] = FLOAT_INF
                     heap_indices_chunks[idx] = -1
 
-                if X_chunk_idx == X_n_chunks - 1 and X_n_samples_rem > 0:
+                # We shard X chunks on threads to distributed the load
+                X_chunk_sharding_idx = (X_chunk_idx + sharding_offset * Y_chunk_idx) % X_n_chunks
+                X_start = X_chunk_sharding_idx * X_n_samples_chunk
+                if X_chunk_sharding_idx == X_n_chunks - 1 and X_n_samples_rem > 0:
                     X_end = X_start + X_n_samples_rem
                 else:
                     X_end = X_start + X_n_samples_chunk
