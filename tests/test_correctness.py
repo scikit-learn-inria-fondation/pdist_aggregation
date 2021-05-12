@@ -4,15 +4,31 @@ from pdist_agregation import parallel_knn
 from sklearn.neighbors import NearestNeighbors
 
 
-@pytest.mark.parametrize("n", [10 ** i for i in [2, 3, 4]])
-@pytest.mark.parametrize("d", [2, 5, 10, 100])
+@pytest.mark.parametrize("n_samples", [10 ** i for i in [2, 3, 4]])
+@pytest.mark.parametrize("n_features", [2, 5, 10, 100])
 @pytest.mark.parametrize("ratio_train_test", [10, 2, 1, 0.5])
 @pytest.mark.parametrize("n_neighbors", [1, 10, 100])
 @pytest.mark.parametrize("working_memory", [2 ** i for i in range(10, 20)])
-def test_correctness(n, d, ratio_train_test, n_neighbors, working_memory, dtype=np.float64):
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_correctness(
+        n_samples,
+        n_features,
+        ratio_train_test,
+        n_neighbors,
+        working_memory,
+        dtype,
+):
     np.random.seed(1)
-    Y = np.random.rand(int(n * d)).astype(dtype).reshape((-1, d))
-    X = np.random.rand(int(n * d / ratio_train_test)).astype(dtype).reshape((-1, d))
+    Y = (
+        np.random.rand(int(n_samples * n_features))
+            .astype(dtype)
+            .reshape((-1, n_features))
+    )
+    X = (
+        np.random.rand(int(n_samples * n_features / ratio_train_test))
+            .astype(dtype)
+            .reshape((-1, n_features))
+    )
 
     neigh = NearestNeighbors(n_neighbors=n_neighbors, algorithm='brute')
     neigh.fit(Y)
