@@ -386,8 +386,11 @@ def parallel_knn(
         np.float64_t[:, ::1] knn_red_distances = np.full((X.shape[0], k),
                                                          FLOAT_INF,
                                                          dtype=np.float64)
-        np.float64_t[::1] Y_sq_norms = np.einsum('ij,ij->i', Y, Y,
-                                                 dtype=np.float64)
+
+        # TODO: upcasting all Y allow better precision but it is costly
+        np.float64_t[:, ::1] Y_upcasted = np.asarray(Y).astype(np.float64)
+        np.float64_t[::1] Y_sq_norms = np.einsum('ij,ij->i', Y_upcasted, Y_upcasted)
+
         integral effective_n_threads = _openmp_effective_n_threads()
 
     n_samples_chunk = _parallel_knn(X, Y,
