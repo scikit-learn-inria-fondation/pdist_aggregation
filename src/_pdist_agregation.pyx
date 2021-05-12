@@ -246,8 +246,7 @@ cdef int _parallel_knn(
         integral X_n_chunks = X_n_full_chunks + (X.shape[0] != (X_n_full_chunks * X_n_samples_chunk))
         integral Y_n_chunks = Y_n_full_chunks + (Y.shape[0] != (Y_n_full_chunks * Y_n_samples_chunk))
 
-        integral n_chunks = X_n_chunks * Y_n_chunks
-        integral num_threads = min(n_chunks, effective_n_threads)
+        integral num_threads = min(Y_n_chunks, effective_n_threads)
 
         integral X_start, X_end, Y_start, Y_end
         integral X_chunk_idx, Y_chunk_idx, idx, jdx
