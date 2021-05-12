@@ -173,13 +173,13 @@ cdef int _simultaneous_sort(
 ### K-NN helpers
 
 cdef void _k_closest_on_chunk(
-    floating[:, ::1] X_c,            # IN
-    floating[:, ::1] Y_c,            # IN
-    floating[::1] Y_sq_norms,        # IN
-    floating *dist_middle_terms,     # IN
-    floating *heap_red_distances,    # IN/OUT
-    integral *heap_indices,          # IN/OUT
-    integral k,                      # IN
+    const floating[:, ::1] X_c,            # IN
+    const floating[:, ::1] Y_c,            # IN
+    const floating[::1] Y_sq_norms,        # IN
+    const floating *dist_middle_terms,     # IN
+    floating *heap_red_distances,          # IN/OUT
+    integral *heap_indices,                # IN/OUT
+    integral k,                            # IN
     # ID of the first element of Y_c
     integral Y_idx_offset,
 ) nogil:
@@ -215,22 +215,22 @@ cdef void _k_closest_on_chunk(
 
 
 cdef int _parallel_knn(
-    floating[:, ::1] X,                  # IN
-    floating[:, ::1] Y,                  # IN
-    floating[::1] Y_sq_norms,            # IN
+    const floating[:, ::1] X,            # IN
+    const floating[:, ::1] Y,            # IN
+    const floating[::1] Y_sq_norms,      # IN
     integral working_memory,
+    integral effective_n_threads,
     integral[:, ::1] knn_indices,        # OUT
     floating[:, ::1] knn_red_distances,  # OUT
-    integral effective_n_threads,
 ) nogil except -1:
     cdef:
         integral k = knn_indices.shape[1]
         integral d = X.shape[1]
         integral sf = sizeof(floating)
-        integral si = sizeof(floating)
+        integral si = sizeof(integral)
 
         # See comment above
-        integral b = sf * (k + 1 + 2 * d) + si * k
+        integral b = k * (si + sf)
         integral n = <integral> floor((-b + sqrt(b ** 2 + 4 * sf * working_memory / effective_n_threads)) / (2 * sf))
         integral n_samples_chunk = max(MIN_CHUNK_SAMPLES, n)
 
@@ -325,13 +325,13 @@ cdef int _parallel_knn(
         free(heap_indices_chunks)
 
     # end: with nogil, parallel
-
+    return n_samples_chunk
 
 # Python interface
 
 def parallel_knn(
-    floating[:, ::1] X,
-    floating[:, ::1] Y,
+    const floating[:, ::1] X,
+    const floating[:, ::1] Y,
     integral k,
     integral working_memory = WORKING_MEMORY,
 ):
@@ -346,7 +346,12 @@ def parallel_knn(
         floating[::1] Y_sq_norms = np.einsum('ij,ij->i', Y, Y)
         integral effective_n_threads = _openmp_effective_n_threads()
 
-    _parallel_knn(X, Y, Y_sq_norms, working_memory,
-                  knn_indices, knn_red_distances, effective_n_threads)
+    n_samples_chunk = _parallel_knn(X, Y,
+                                    Y_sq_norms,
+                                    working_memory,
+                                    effective_n_threads,
+                                    knn_indices,
+                                    knn_red_distances,
+                                    )
 
-    return np.asarray(knn_indices)
+    return np.asarray(knn_indices), n_samples_chunk
