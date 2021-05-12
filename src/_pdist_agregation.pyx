@@ -177,8 +177,8 @@ cdef void _k_closest_on_chunk(
     const floating[:, ::1] Y_c,            # IN
     const floating[::1] Y_sq_norms,        # IN
     const floating *dist_middle_terms,     # IN
-    floating *heap_red_distances,          # IN/OUT
-    integral *heap_indices,                # IN/OUT
+    floating *heaps_red_distances,         # IN/OUT
+    integral *heaps_indices,               # IN/OUT
     integral k,                            # IN
     # ID of the first element of Y_c
     integral Y_idx_offset,
@@ -206,8 +206,8 @@ cdef void _k_closest_on_chunk(
     # Computing argmins here
     for i in range(X_c.shape[0]):
         for j in range(Y_c.shape[0]):
-            _push(heap_red_distances + i * k,
-                  heap_indices + i * k,
+            _push(heaps_red_distances + i * k,
+                  heaps_indices + i * k,
                   k,
                   # reduced distance: - 2 X_c_i.Y_c_j^T + ||Y_c_j||²
                   dist_middle_terms[i * Y_c.shape[0] + j] + Y_sq_norms[j],
@@ -254,8 +254,8 @@ cdef int _parallel_knn(
         integral X_chunk_idx, X_chunk_sharding_idx, Y_chunk_idx, idx, jdx
 
         floating *dist_middle_terms_chunks
-        floating *heap_red_distances_chunks
-        integral *heap_indices_chunks
+        floating *heaps_red_distances_chunks
+        integral *heaps_indices_chunks
 
     with nogil, parallel(num_threads=num_threads):
         # Thread local buffers
@@ -264,10 +264,10 @@ cdef int _parallel_knn(
         dist_middle_terms_chunks = <floating*> malloc(Y_n_samples_chunk *
                                                       X_n_samples_chunk *
                                                       sf)
-        heap_red_distances_chunks = <floating*> malloc(X_n_samples_chunk *
+        heaps_red_distances_chunks = <floating*> malloc(X_n_samples_chunk *
                                                        k *
                                                        sf)
-        heap_indices_chunks = <integral*> malloc(X_n_samples_chunk * k * sf)
+        heaps_indices_chunks = <integral*> malloc(X_n_samples_chunk * k * sf)
 
         for Y_chunk_idx in prange(Y_n_chunks, schedule='static'):
             Y_start = Y_chunk_idx * Y_n_samples_chunk
@@ -279,8 +279,8 @@ cdef int _parallel_knn(
             for X_chunk_idx in range(X_n_chunks):
                 # We reset the heap between X chunks (memset isn't suitable here)
                 for idx in range(X_n_samples_chunk * k):
-                    heap_red_distances_chunks[idx] = FLOAT_INF
-                    heap_indices_chunks[idx] = -1
+                    heaps_red_distances_chunks[idx] = FLOAT_INF
+                    heaps_indices_chunks[idx] = -1
 
                 # We shard X chunks on threads to distributed the load
                 X_chunk_sharding_idx = (X_chunk_idx + sharding_offset * Y_chunk_idx) % X_n_chunks
@@ -295,10 +295,10 @@ cdef int _parallel_knn(
                     Y[Y_start:Y_end, :],
                     Y_sq_norms[Y_start:Y_end],
                     dist_middle_terms_chunks,
-                    heap_red_distances_chunks,
-                    heap_indices_chunks,
+                    heaps_red_distances_chunks,
+                    heaps_indices_chunks,
                     k,
-                    Y_start
+                    Y_start,
                 )
 
                 with gil:
@@ -309,8 +309,8 @@ cdef int _parallel_knn(
                                 &knn_red_distances[X_start + idx, 0],
                                 &knn_indices[X_start + idx, 0],
                                 k,
-                                heap_red_distances_chunks[idx * k + jdx],
-                                heap_indices_chunks[idx * k + jdx],
+                                heaps_red_distances_chunks[idx * k + jdx],
+                                heaps_indices_chunks[idx * k + jdx],
                             )
             # end: for X_chunk_idx
 
@@ -324,8 +324,8 @@ cdef int _parallel_knn(
             )
 
         free(dist_middle_terms_chunks)
-        free(heap_red_distances_chunks)
-        free(heap_indices_chunks)
+        free(heaps_red_distances_chunks)
+        free(heaps_indices_chunks)
 
     # end: with nogil, parallel
     return n_samples_chunk
