@@ -32,10 +32,11 @@ datasets:
     n_samples_test: 1e6
     n_features: 1e2
 
-working_memories: # [2 ** i for i in range(17, 26, 2)
+working_memories: # in bytes, [2 ** i for i in range(17, 26, 2)] + L3 cache size
   - 131072
   - 524288
   - 2097152
+  - 4194304  # typical L3 cache size
   - 8388608
   - 33554432
 
