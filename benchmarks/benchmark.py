@@ -71,7 +71,7 @@ for dataset in datasets:
                     print("---")
 
                     benchmarks.to_csv(
-                        "results.csv",
+                        "results/results.csv",
                         mode="w+",
                         index=False,
                     )
