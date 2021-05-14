@@ -36,13 +36,11 @@ for dataset in datasets:
             for k in n_neighbors:
                 working_memorys = WORKING_MEMS if chunk else [0]
                 for working_memory in working_memorys:
-                    nn_instance = estim_class(n_neighbors=k,
-                                              algorithm="brute").fit(X_train)
+                    nn_instance = estim_class(n_neighbors=k, algorithm="brute").fit(
+                        X_train
+                    )
 
-                    knn_kwargs = {
-                        "X": X_test,
-                        "return_distance": False
-                    }
+                    knn_kwargs = {"X": X_test, "return_distance": False}
                     if chunk:
                         knn_kwargs["working_memory"] = working_memory
 
