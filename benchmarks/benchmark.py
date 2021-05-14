@@ -36,13 +36,11 @@ for dataset in datasets:
             for k in n_neighbors:
                 chunk_sizes = CHUNK_SIZES if chunk else [0]
                 for chunk_size in chunk_sizes:
-                    nn_instance = estim_class(n_neighbors=k,
-                                              algorithm="brute").fit(X_train)
+                    nn_instance = estim_class(n_neighbors=k, algorithm="brute").fit(
+                        X_train
+                    )
 
-                    knn_kwargs = {
-                        "X": X_test,
-                        "return_distance": False
-                    }
+                    knn_kwargs = {"X": X_test, "return_distance": False}
                     if chunk:
                         knn_kwargs["chunk_size"] = chunk_size
 

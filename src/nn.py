@@ -15,18 +15,21 @@ class NearestNeighbors:
     def use_chunks_on_Y(self):
         raise NotImplementedError()
 
-    def kneighbors(self, X,
-                   chunk_size=4098,
-                   return_distance=False):
-        return parallel_knn(X, self.X_,
-                            k=self.n_neighbors,
-                            chunk_size=chunk_size,
-                            use_chunks_on_Y=self.use_chunks_on_Y)
+    def kneighbors(self, X, chunk_size=4098, return_distance=False):
+        return parallel_knn(
+            X,
+            self.X_,
+            k=self.n_neighbors,
+            chunk_size=chunk_size,
+            use_chunks_on_Y=self.use_chunks_on_Y,
+        )
+
 
 class NearestNeighborsSingleChunking(NearestNeighbors):
     @property
     def use_chunks_on_Y(self):
         return False
+
 
 class NearestNeighborsDoubleChunking(NearestNeighbors):
     @property
