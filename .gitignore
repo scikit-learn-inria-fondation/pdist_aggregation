@@ -61,6 +61,6 @@ MANIFEST
 # Visual Studio Code files
 .vscode
 
-cython
+src/cython
 
 *.csv

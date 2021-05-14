@@ -43,7 +43,7 @@ jobs:
           export OPENBLAS_NUM_THREADS=$NUM_CORES
 
       - name: Run benchmark suite
-        run: python benchmarks/benchmark
+        run: python benchmarks/benchmark.py
 
       - name: Convert notebook to html
         run: |

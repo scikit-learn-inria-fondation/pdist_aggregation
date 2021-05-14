@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-with open("config.yml", "r") as f:
+with open("benchmarks/config.yml", "r") as f:
     config = yaml.full_load(f)
 
 datasets = config["datasets"]
@@ -71,7 +71,7 @@ for dataset in datasets:
                     print("---")
 
                     benchmarks.to_csv(
-                        "results/results.csv",
+                        "benchmarks/results/results.csv",
                         mode="w+",
                         index=False,
                     )
