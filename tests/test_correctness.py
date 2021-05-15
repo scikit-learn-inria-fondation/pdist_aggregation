@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from pdist_aggregation import parallel_knn
 from sklearn.neighbors import NearestNeighbors
 
 from pdist_aggregation import parallel_knn

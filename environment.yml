@@ -2,6 +2,8 @@ name: pdist_aggregation
 channels:
   - conda-forge
 dependencies:
+  - python=3.9
+  - compilers
   - jupyter
   - numpy
   - cython
@@ -16,7 +18,7 @@ dependencies:
       - --pre
       - --index-url https://pypi.anaconda.org/scipy-wheels-nightly/simple
       - scikit-learn
-      # Install pdist_aggregation from source
+      # Install pdist_agregation from source
       - -e ./src
       # Install cython 3 from upstream directly
       - -e git+https://github.com/cython/cython.git#egg=cython
