@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-with open("config.yml", "r") as f:
+with open("benchmarks/config.yml", "r") as f:
     config = yaml.full_load(f)
 
 datasets = config["datasets"]
