@@ -6,14 +6,12 @@
 # cython: linetrace=True
 # cython: binding=True
 # distutils: define_macros=CYTHON_TRACE_NOGIL=1
-import numpy as np
-
 cimport numpy as np
 cimport openmp
-from libc.stdlib cimport free, malloc
 
+from libc.stdlib cimport malloc, free
+from cython.parallel cimport prange, parallel
 from cython cimport floating, integral
-from cython.parallel cimport parallel, prange
 
 # TODO: Set with a quick tuning, can be improved
 DEF CHUNK_SIZE = 4096
