@@ -5,8 +5,8 @@ from Cython.Build import build_ext
 
 extensions = [
     Extension(
-        "pdist_agregation",
-        sources=["_pdist_agregation.pyx"],
+        "pdist_aggregation",
+        sources=["_pdist_aggregation.pyx"],
         include_dirs=[numpy.get_include()],
         extra_compile_args=['-fopenmp'],
         extra_link_args=['-fopenmp'],
@@ -15,7 +15,7 @@ extensions = [
 ]
 
 setup(
-    name="pdist_agregation",
+    name="pdist_aggregation",
     cmdclass={"build_ext": build_ext},
     version='0.1',
     ext_modules=extensions,

@@ -1,4 +1,4 @@
-from pdist_agregation import parallel_knn
+from pdist_aggregation import parallel_knn
 
 
 class NearestNeighbors:
