@@ -270,38 +270,37 @@ cdef int _parallel_knn(
         floating *heaps_red_distances_chunks
         integral *heaps_indices_chunks
 
-    with nogil, parallel(num_threads=num_threads):
-        # Thread local buffers
+    for X_chunk_idx in range(X_n_chunks):
+        # We reset the heap between X chunks (memset isn't suitable here)
+        for idx in range(X_n_samples_chunk * k):
+            heaps_red_distances_chunks[idx] = FLOAT_INF
+            heaps_indices_chunks[idx] = -1
 
-        # Temporary buffer for the -2 * X_c.dot(Y_c.T) term
-        dist_middle_terms_chunks = <floating*> malloc(Y_n_samples_chunk *
-                                                      X_n_samples_chunk *
-                                                      sf)
-        heaps_red_distances_chunks = <floating*> malloc(X_n_samples_chunk *
-                                                       k *
-                                                       sf)
-        heaps_indices_chunks = <integral*> malloc(X_n_samples_chunk * k * sf)
+        # We shard X chunks on threads to distributed the load
+        X_start = X_chunk_idx * X_n_samples_chunk
+        if X_chunk_idx == X_n_chunks - 1 and X_n_samples_rem > 0:
+            X_end = X_start + X_n_samples_rem
+        else:
+            X_end = X_start + X_n_samples_chunk
 
-        for Y_chunk_idx in prange(Y_n_chunks, schedule='static'):
-            Y_start = Y_chunk_idx * Y_n_samples_chunk
-            if Y_chunk_idx == Y_n_chunks - 1 and Y_n_samples_rem > 0:
-                Y_end = Y_start + Y_n_samples_rem
-            else:
-                Y_end = Y_start + Y_n_samples_chunk
+        with nogil, parallel(num_threads=num_threads):
+            # Thread local buffers
 
-            for X_chunk_idx in range(X_n_chunks):
-                # We reset the heap between X chunks (memset isn't suitable here)
-                for idx in range(X_n_samples_chunk * k):
-                    heaps_red_distances_chunks[idx] = FLOAT_INF
-                    heaps_indices_chunks[idx] = -1
+            # Temporary buffer for the -2 * X_c.dot(Y_c.T) term
+            dist_middle_terms_chunks = <floating*> malloc(Y_n_samples_chunk *
+                                                          X_n_samples_chunk *
+                                                          sf)
+            heaps_red_distances_chunks = <floating*> malloc(X_n_samples_chunk *
+                                                           k *
+                                                           sf)
+            heaps_indices_chunks = <integral*> malloc(X_n_samples_chunk * k * sf)
 
-                # We shard X chunks on threads to distributed the load
-                X_chunk_sharding_idx = (X_chunk_idx + sharding_offset * Y_chunk_idx) % X_n_chunks
-                X_start = X_chunk_sharding_idx * X_n_samples_chunk
-                if X_chunk_sharding_idx == X_n_chunks - 1 and X_n_samples_rem > 0:
-                    X_end = X_start + X_n_samples_rem
+            for Y_chunk_idx in prange(Y_n_chunks, schedule='static'):
+                Y_start = Y_chunk_idx * Y_n_samples_chunk
+                if Y_chunk_idx == Y_n_chunks - 1 and Y_n_samples_rem > 0:
+                    Y_end = Y_start + Y_n_samples_rem
                 else:
-                    X_end = X_start + X_n_samples_chunk
+                    Y_end = Y_start + Y_n_samples_chunk
 
                 _k_closest_on_chunk(
                     X[X_start:X_end, :],
@@ -314,20 +313,20 @@ cdef int _parallel_knn(
                     Y_start,
                 )
 
-                with gil:
-                    # Synchronising with the main heaps
-                    for idx in range(X_end - X_start):
-                        for jdx in range(k):
-                            _push(
-                                &knn_red_distances[X_start + idx, 0],
-                                &knn_indices[X_start + idx, 0],
-                                k,
-                                heaps_red_distances_chunks[idx * k + jdx],
-                                heaps_indices_chunks[idx * k + jdx],
-                            )
-            # end: for X_chunk_idx
+            # end: for Y_chunk_idx
+            with gil:
+                # Synchronising with the main heaps
+                for idx in range(X_end - X_start):
+                    for jdx in range(k):
+                        _push(
+                            &knn_red_distances[X_start + idx, 0],
+                            &knn_indices[X_start + idx, 0],
+                            k,
+                            heaps_red_distances_chunks[idx * k + jdx],
+                            heaps_indices_chunks[idx * k + jdx],
+                        )
 
-        # end: for Y_chunk_idx
+        # end: for X_chunk_idx
 
         for idx in prange(X.shape[0], schedule='static'):
             _simultaneous_sort(
