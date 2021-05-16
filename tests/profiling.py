@@ -1,5 +1,5 @@
 import numpy as np
-from pdist_agregation import parallel_knn
+from pdist_aggregation import parallel_knn
 
 def main(args=None):
     n = 1e4
