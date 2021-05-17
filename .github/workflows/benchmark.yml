@@ -2,7 +2,7 @@ name: Run benchmarks
 
 on:
   push:
-    branches: [setup_action]
+    branches: [main]
   pull_request:
     types: [closed]
 
