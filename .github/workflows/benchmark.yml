@@ -23,7 +23,8 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{
-            hashFiles('environment.yml') }}
+            hashFiles('environment.yml') }}-${{
+            hashFiles('src/_pdist_aggregation.pyx') }}
 
       - name: Setup miniconda
         uses: conda-incubator/setup-miniconda@v2
@@ -39,7 +40,7 @@ jobs:
         run: |
           export NUM_CORES=`python -c "import joblib; print(joblib.cpu_count())"`
           export OMP_NUM_THREADS=$NUM_CORES
-          # Avoid threads over-subscription in parallel implementation 
+          # Avoid threads over-subscription in parallel implementation
           # TODO: remove once threadpoolctl is set.
           export MKL_NUM_THREADS=1
           export OPENBLAS_NUM_THREADS=1
