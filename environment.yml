@@ -14,9 +14,10 @@ dependencies:
   - pyaml
   - pip
   - pre-commit
+  - libgcc
   - pip:
       - --pre
-      - --index-url https://pypi.anaconda.org/scipy-wheels-nightly/simple
+      - --extra-index https://pypi.anaconda.org/scipy-wheels-nightly/simple
       - scikit-learn
       - pykeops
       # Install pdist_agregation from source
