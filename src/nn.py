@@ -1,5 +1,6 @@
-from pdist_aggregation import parallel_knn
 from sklearn.utils.validation import check_array
+
+from pdist_aggregation import parallel_knn
 
 
 class NearestNeighbors:
@@ -16,14 +17,15 @@ class NearestNeighbors:
     def use_chunks_on_Y(self):
         raise NotImplementedError()
 
-    def kneighbors(self, X,
-                   working_memory=4_000_000,
-                   return_distance=False):
+    def kneighbors(self, X, working_memory=4_000_000, return_distance=False):
         X = check_array(X, order="C")
-        return parallel_knn(X, self.X_,
-                            k=self.n_neighbors,
-                            working_memory=working_memory,
-                            use_chunks_on_Y=self.use_chunks_on_Y)
+        return parallel_knn(
+            X,
+            self.X_,
+            k=self.n_neighbors,
+            working_memory=working_memory,
+            use_chunks_on_Y=self.use_chunks_on_Y,
+        )
 
 
 class NearestNeighborsSingleChunking(NearestNeighbors):
