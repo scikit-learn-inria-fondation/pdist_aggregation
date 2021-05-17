@@ -1,7 +1,9 @@
-name: pdist_agregation
+name: pdist_aggregation
 channels:
   - conda-forge
 dependencies:
+  - python=3.9
+  - compilers
   - jupyter
   - numpy
   - cython
@@ -11,6 +13,7 @@ dependencies:
   - scikit-learn-intelex
   - pyaml
   - pip
+  - pre-commit
   - pip:
       - --pre
       - --index-url https://pypi.anaconda.org/scipy-wheels-nightly/simple

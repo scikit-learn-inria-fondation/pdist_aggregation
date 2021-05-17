@@ -1,5 +1,6 @@
 import numpy as np
-from pdist_agregation import parallel_knn
+
+from pdist_aggregation import parallel_knn
 
 
 def main(args=None):
@@ -11,9 +12,7 @@ def main(args=None):
     Y = np.random.rand(int(n * d)).reshape((-1, d))
     X = np.random.rand(int(n * d // 2)).reshape((-1, d))
 
-    parallel_knn(X, Y,
-                 k=n_neighbors,
-                 working_memory=working_memory)
+    parallel_knn(X, Y, k=n_neighbors, working_memory=working_memory)
 
 
 if __name__ == "__main__":

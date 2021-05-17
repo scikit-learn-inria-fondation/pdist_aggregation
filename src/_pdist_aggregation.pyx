@@ -7,15 +7,18 @@
 # cython: binding=False
 # distutils: define_macros=CYTHON_TRACE_NOGIL=0
 import os
+
 import numpy as np
+
 cimport numpy as np
 cimport openmp
+
 from joblib import cpu_count
 
-from libc.stdlib cimport malloc, free
-from libc.math cimport sqrt, floor
-from cython.parallel cimport prange, parallel
 from cython cimport floating, integral
+from cython.parallel cimport parallel, prange
+from libc.math cimport floor, sqrt
+from libc.stdlib cimport free, malloc
 
 # TODO: Set with a quick tuning, can be improved
 DEF WORKING_MEMORY = 4_000_000  # bytes
@@ -24,8 +27,16 @@ DEF MIN_CHUNK_SAMPLES = 20
 
 DEF FLOAT_INF = 1e36
 
-from sklearn.utils._cython_blas cimport _gemm, BLAS_Order, BLAS_Trans
-from sklearn.utils._cython_blas cimport ColMajor, RowMajor, Trans, NoTrans
+from sklearn.utils._cython_blas cimport (
+    BLAS_Order,
+    BLAS_Trans,
+    ColMajor,
+    NoTrans,
+    RowMajor,
+    Trans,
+    _gemm,
+)
+
 
 cpdef int _openmp_effective_n_threads(n_threads=None):
     # Taken and adapted from sklearn.utils._openmp_helpers
