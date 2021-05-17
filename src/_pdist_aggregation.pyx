@@ -21,7 +21,7 @@ from libc.math cimport floor, sqrt
 from libc.stdlib cimport free, malloc
 
 # TODO: Set with a quick tuning, can be improved
-DEF WORKING_MEMORY = 4_000_000  # bytes
+DEF CHUNK_SIZE = 4096  # bytes
 
 DEF MIN_CHUNK_SAMPLES = 20
 
@@ -229,7 +229,7 @@ cdef int _parallel_knn(
     const floating[:, ::1] X,            # IN
     const floating[:, ::1] Y,            # IN
     const floating[::1] Y_sq_norms,      # IN
-    integral working_memory,
+    integral chunk_size,
     integral effective_n_threads,
     integral[:, ::1] knn_indices,        # OUT
     floating[:, ::1] knn_red_distances,  # OUT
@@ -239,24 +239,7 @@ cdef int _parallel_knn(
         integral d = X.shape[1]
         integral sf = sizeof(floating)
         integral si = sizeof(integral)
-
-        # Computing n_samples_chunk (n) given the datastructures' sizes
-        # for the critical zone (_k_closest_on_chunk + global heaps update)
-        #  - reduced distances matrix on chunks: n^2 sf
-        #  - global and thread local heaps (k-NN indices  for a chunk of X): 2 n k si
-        #  - global and thread local heaps (red distances for a chunk of X): 2 n k sf
-        #
-        # n is optimal and data structures fits in in W_t, a
-        # thread working memory, iff:
-        #
-        #  n = max_n { n \in IN | n^2 sf + n 2 k(si + sf) <= W_t }
-        #
-        # If we set: b = 2 * k * (si + sf), we get:
-        #
-        #     n = floor ((-b + sqrt(b^2 + 4s_f W_t)) / (2s_f))
-        integral b = 2 * k * (si + sf)
-        integral n = <integral> floor((-b + sqrt(b ** 2 + 4 * sf * working_memory / effective_n_threads)) / (2 * sf))
-        integral n_samples_chunk = max(MIN_CHUNK_SAMPLES, n)
+        integral n_samples_chunk = max(MIN_CHUNK_SAMPLES, chunk_size)
 
         integral X_n_samples_chunk = min(X.shape[0], n_samples_chunk)
         integral X_n_full_chunks = X.shape[0] // X_n_samples_chunk
@@ -350,7 +333,7 @@ cdef int _parallel_knn(
 
         # end: with nogil, parallel
     # end: for X_chunk_idx
-    return n_samples_chunk
+    return Y_n_chunks
 
 # Python interface
 
@@ -358,7 +341,7 @@ def parallel_knn(
     const floating[:, ::1] X,
     const floating[:, ::1] Y,
     integral k,
-    integral working_memory = WORKING_MEMORY,
+    integral chunk_size = CHUNK_SIZE,
 ):
     # TODO: we could use uint32 here, working up to 4,294,967,295 indices
     int_dtype = np.int32 if integral is int else np.int64
@@ -371,8 +354,8 @@ def parallel_knn(
         floating[::1] Y_sq_norms = np.einsum('ij,ij->i', Y, Y)
         integral effective_n_threads = _openmp_effective_n_threads()
 
-    n_samples_chunk = _parallel_knn(X, Y, Y_sq_norms, working_memory,
+    Y_n_chunks = _parallel_knn(X, Y, Y_sq_norms, chunk_size,
                                     effective_n_threads, knn_indices,
                                     knn_red_distances)
 
-    return np.asarray(knn_indices), n_samples_chunk
+    return np.asarray(knn_indices), Y_n_chunks

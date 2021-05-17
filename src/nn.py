@@ -13,8 +13,6 @@ class NearestNeighbors:
         self.X_ = X
         return self
 
-    def kneighbors(self, X, working_memory=4_000_000, return_distance=False):
+    def kneighbors(self, X, chunk_size=4096, return_distance=False):
         X = check_array(X, order="C")
-        return parallel_knn(
-            X, self.X_, k=self.n_neighbors, working_memory=working_memory
-        )
+        return parallel_knn(X, self.X_, k=self.n_neighbors, chunk_size=chunk_size)
