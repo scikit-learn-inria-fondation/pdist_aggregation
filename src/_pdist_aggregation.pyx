@@ -28,13 +28,13 @@ DEF MIN_CHUNK_SAMPLES = 20
 DEF FLOAT_INF = 1e36
 
 from sklearn.utils._cython_blas cimport (
-    BLAS_Order,
-    BLAS_Trans,
-    ColMajor,
-    NoTrans,
-    RowMajor,
-    Trans,
-    _gemm,
+  BLAS_Order,
+  BLAS_Trans,
+  ColMajor,
+  NoTrans,
+  RowMajor,
+  Trans,
+  _gemm,
 )
 
 
@@ -272,8 +272,6 @@ cdef int _parallel_knn(
 
         integral num_threads = min(Y_n_chunks, effective_n_threads)
 
-        integral sharding_offset = X_n_chunks // num_threads
-
         integral X_start, X_end, Y_start, Y_end
         integral X_chunk_idx, X_chunk_sharding_idx, Y_chunk_idx, idx, jdx
 
@@ -282,12 +280,6 @@ cdef int _parallel_knn(
         integral *heaps_indices_chunks
 
     for X_chunk_idx in range(X_n_chunks):
-        # We reset the heap between X chunks (memset isn't suitable here)
-        for idx in range(X_n_samples_chunk * k):
-            heaps_red_distances_chunks[idx] = FLOAT_INF
-            heaps_indices_chunks[idx] = -1
-
-        # We shard X chunks on threads to distributed the load
         X_start = X_chunk_idx * X_n_samples_chunk
         if X_chunk_idx == X_n_chunks - 1 and X_n_samples_rem > 0:
             X_end = X_start + X_n_samples_rem
@@ -305,6 +297,11 @@ cdef int _parallel_knn(
                                                            k *
                                                            sf)
             heaps_indices_chunks = <integral*> malloc(X_n_samples_chunk * k * sf)
+
+            # Initialising heep (memset isn't suitable here)
+            for idx in range(X_n_samples_chunk * k):
+                heaps_red_distances_chunks[idx] = FLOAT_INF
+                heaps_indices_chunks[idx] = -1
 
             for Y_chunk_idx in prange(Y_n_chunks, schedule='static'):
                 Y_start = Y_chunk_idx * Y_n_samples_chunk
@@ -337,20 +334,22 @@ cdef int _parallel_knn(
                             heaps_indices_chunks[idx * k + jdx],
                         )
 
-        # end: for X_chunk_idx
+            free(dist_middle_terms_chunks)
+            free(heaps_red_distances_chunks)
+            free(heaps_indices_chunks)
 
-        for idx in prange(X.shape[0], schedule='static'):
-            _simultaneous_sort(
-                &knn_red_distances[idx, 0],
-                &knn_indices[idx, 0],
-                k,
-            )
+        # end: with nogil, parallel
+        with nogil, parallel(num_threads=num_threads):
 
-        free(dist_middle_terms_chunks)
-        free(heaps_red_distances_chunks)
-        free(heaps_indices_chunks)
+            for idx in prange(X.shape[0], schedule='static'):
+                _simultaneous_sort(
+                    &knn_red_distances[idx, 0],
+                    &knn_indices[idx, 0],
+                    k,
+                )
 
-    # end: with nogil, parallel
+        # end: with nogil, parallel
+    # end: for X_chunk_idx
     return n_samples_chunk
 
 # Python interface
@@ -372,12 +371,8 @@ def parallel_knn(
         floating[::1] Y_sq_norms = np.einsum('ij,ij->i', Y, Y)
         integral effective_n_threads = _openmp_effective_n_threads()
 
-    n_samples_chunk = _parallel_knn(X, Y,
-                                    Y_sq_norms,
-                                    working_memory,
-                                    effective_n_threads,
-                                    knn_indices,
-                                    knn_red_distances,
-                                    )
+    n_samples_chunk = _parallel_knn(X, Y, Y_sq_norms, working_memory,
+                                    effective_n_threads, knn_indices,
+                                    knn_red_distances)
 
     return np.asarray(knn_indices), n_samples_chunk
