@@ -10,7 +10,7 @@ with open("benchmarks/config.yml", "r") as f:
     config = yaml.full_load(f)
 
 datasets = config["datasets"]
-WORKING_MEMS = config["working_memories"]
+working_memory_range = config["working_memory_range"]
 n_neighbors = config["n_neighbors"]
 estimators = config["estimators"]
 
@@ -34,8 +34,7 @@ for dataset in datasets:
             estim_class = getattr(importlib.import_module(module), class_name)
 
             for k in n_neighbors:
-                working_memorys = WORKING_MEMS if chunk else [0]
-                for working_memory in working_memorys:
+                for working_memory in working_memory_range if chunk else [0]:
                     nn_instance = estim_class(n_neighbors=k, algorithm="brute").fit(
                         X_train
                     )
