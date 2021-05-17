@@ -5,6 +5,9 @@ estimators:
   - name: daal4py
     estimator: daal4py.sklearn.neighbors.NearestNeighbors
     chunk: False
+  - name: pykeops
+    estimator: nn.KeOpsNearestNeighbors
+    chunk: False
   - name: "Double chunking @ fdc9d31"
     estimator: nn.NearestNeighborsDoubleChunking
     chunk: True
