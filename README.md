@@ -1,4 +1,5 @@
-# Experiments on pairwise distances aggregations 
+# Experiments on pairwise distances aggregations
+[See benchmark results](https://scikit-learn-inria-fondation.github.io/pdist_aggregation/)
 
 ## Setup
 
@@ -11,7 +12,7 @@ conda env create -f environment.yml
 
 ## Running benchmarks
 
-You can adapt the benchmarks' configuration editing 
+You can adapt the benchmarks' configuration editing
 [`benchmarks/config.yml`](benchmarks/config.yml).
 
 And then simply run the benchmark script:
@@ -45,4 +46,3 @@ threads to use to 1:
 ```bash
 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=2 python benchmarks/benchmark.py
 ```
-

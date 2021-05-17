@@ -7,7 +7,11 @@ extensions = [
         "pdist_aggregation",
         sources=["_pdist_aggregation.pyx"],
         include_dirs=[numpy.get_include()],
-        extra_compile_args=["-fopenmp"],
+        extra_compile_args=[
+            "-fopenmp",
+            "-O3",
+            "-ftree-vectorize",
+        ],
         extra_link_args=["-fopenmp"],
         define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
     )

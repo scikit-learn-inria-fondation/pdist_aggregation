@@ -10,11 +10,11 @@ with open("benchmarks/config.yml", "r") as f:
     config = yaml.full_load(f)
 
 datasets = config["datasets"]
-CHUNK_SIZES = config["chunk_sizes"]
+working_memory_range = config["working_memory_range"]
 n_neighbors = config["n_neighbors"]
 estimators = config["estimators"]
 
-N_TRIALS = 20
+N_TRIALS = 5
 one_GiB = 1e9
 benchmarks = pd.DataFrame()
 
@@ -34,20 +34,23 @@ for dataset in datasets:
             estim_class = getattr(importlib.import_module(module), class_name)
 
             for k in n_neighbors:
-                chunk_sizes = CHUNK_SIZES if chunk else [0]
-                for chunk_size in chunk_sizes:
+                for working_memory in working_memory_range if chunk else [0]:
                     nn_instance = estim_class(n_neighbors=k, algorithm="brute").fit(
                         X_train
                     )
 
                     knn_kwargs = {"X": X_test, "return_distance": False}
                     if chunk:
-                        knn_kwargs["chunk_size"] = chunk_size
+                        knn_kwargs["working_memory"] = working_memory
 
                     t0_ = time.perf_counter()
-                    nn_instance.kneighbors(**knn_kwargs)
+                    knn_res = nn_instance.kneighbors(**knn_kwargs)
                     t1_ = time.perf_counter()
                     time_elapsed = round(t1_ - t0_, 5)
+
+                    # Parallel_knn returns the size of samples at run time
+                    # We report it in the benchmarks results
+                    n = knn_res[1] if isinstance(knn_res, tuple) else np.nan
 
                     row = dict(
                         trial=trial,
@@ -55,7 +58,7 @@ for dataset in datasets:
                         n_samples_train=ns_train,
                         n_samples_test=ns_test,
                         n_features=nf,
-                        chunk_size=chunk_size,
+                        working_memory=(working_memory, n),
                         n_neighbors=k,
                     )
                     row["time_elapsed"] = time_elapsed
@@ -65,7 +68,7 @@ for dataset in datasets:
                     print("---")
 
                     benchmarks.to_csv(
-                        f"results_{N_TRIALS}_trials.csv",
+                        "benchmarks/results/results.csv",
                         mode="w+",
                         index=False,
                     )
