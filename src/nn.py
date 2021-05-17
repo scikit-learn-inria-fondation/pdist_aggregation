@@ -1,3 +1,5 @@
+import numpy as np
+from pykeops.numpy import Genred
 from sklearn.utils.validation import check_array
 
 from pdist_aggregation import parallel_knn
@@ -38,3 +40,36 @@ class NearestNeighborsDoubleChunking(NearestNeighbors):
     @property
     def use_chunks_on_Y(self):
         return True
+
+
+class KeOpsNearestNeighbors(NearestNeighbors):
+    def __init__(self, n_neighbors=1, algorithm="brute"):
+        self._K = n_neighbors
+
+    def fit(self, X):
+        self.X_ = X
+        D = X.shape[1]
+
+        formula = "SqDist(x,y)"
+        variables = [
+            "x = Vi(" + str(D) + ")",
+            "y = Vj(" + str(D) + ")",
+        ]
+        dtype = "float64"
+        self._argkmin_routine = Genred(
+            formula,
+            variables,
+            reduction_op="ArgKMin",
+            axis=1,
+            dtype=dtype,
+            opt_arg=self._K,
+        )
+
+        # Apparently warming helps
+        self._argkmin_routine(
+            np.random.rand(10, D).astype(dtype), np.random.rand(10, D).astype(dtype)
+        )
+        return self
+
+    def kneighbors(self, X, working_memory=4_000_000, return_distance=False):
+        return self._argkmin_routine(X, self.X_, backend="auto")
