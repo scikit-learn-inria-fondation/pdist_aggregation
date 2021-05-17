@@ -43,6 +43,10 @@ class NearestNeighborsDoubleChunking(NearestNeighbors):
 
 
 class KeOpsNearestNeighbors(NearestNeighbors):
+    """Adapted from this example:
+    https://github.com/getkeops/keops/blob/master/pykeops/examples/numpy/plot_test_ArgKMin.py
+    """
+
     def __init__(self, n_neighbors=1, algorithm="brute"):
         self._K = n_neighbors
 
