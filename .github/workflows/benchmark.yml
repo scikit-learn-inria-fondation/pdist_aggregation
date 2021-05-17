@@ -39,10 +39,8 @@ jobs:
         run: |
           export NUM_CORES=`python -c "import joblib; print(joblib.cpu_count())"`
           export OMP_NUM_THREADS=$NUM_CORES
-          # Avoid threads over-subscription in parallel implementation
-          # TODO: remove once threadpoolctl is set.
-          export MKL_NUM_THREADS=1
-          export OPENBLAS_NUM_THREADS=1
+          export MKL_NUM_THREADS=$NUM_CORES
+          export OPENBLAS_NUM_THREADS=$NUM_CORES
 
       - name: Run benchmark suite
         run: python benchmarks/benchmark.py

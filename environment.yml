@@ -13,6 +13,7 @@ dependencies:
   - scikit-learn-intelex
   - pyaml
   - pip
+  - theadpoolctl
   - pre-commit
   - pip:
       - --pre
