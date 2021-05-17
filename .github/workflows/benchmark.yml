@@ -2,7 +2,7 @@ name: Run benchmarks
 
 on:
   push:
-    branches: [setup_action]
+    branches: [main]
   pull_request:
     types: [closed]
 
@@ -23,7 +23,8 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{
-            hashFiles('environment.yml') }}
+            hashFiles('environment.yml') }}-${{
+            hashFiles('src/_pdist_aggregation.pyx') }}
 
       - name: Setup miniconda
         uses: conda-incubator/setup-miniconda@v2

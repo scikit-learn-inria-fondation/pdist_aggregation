@@ -17,6 +17,13 @@ datasets:
   - n_samples_train: 1e6
     n_samples_test: 1e3
     n_features: 1e2
+  # X_test taller
+  - n_samples_train: 1e3
+    n_samples_test: 1e6
+    n_features: 50
+  - n_samples_train: 1e3
+    n_samples_test: 1e6
+    n_features: 1e2
 
 chunk_size: # [2 ** i for i in range(10, 20)]
   - 1024
