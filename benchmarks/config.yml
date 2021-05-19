@@ -20,6 +20,8 @@ datasets:
     n_features: 1e2
 
 chunk_size: # [2 ** i for i in range(10, 20)]
+  - 256
+  - 512
   - 1024
   - 2048
   - 4096
