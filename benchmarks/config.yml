@@ -1,10 +1,4 @@
 estimators:
-  - name: sklearn
-    estimator: sklearn.neighbors.NearestNeighbors
-    chunk: False
-  - name: daal4py
-    estimator: daal4py.sklearn.neighbors.NearestNeighbors
-    chunk: False
   - name: "Double chunking"
     estimator: nn.NearestNeighbors
     chunk: True
