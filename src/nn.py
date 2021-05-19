@@ -1,6 +1,7 @@
 import numpy as np
 from pykeops.numpy import Genred
 from sklearn.utils.validation import check_array
+from threadpoolctl import threadpool_limits
 
 from pdist_aggregation import parallel_knn
 
@@ -15,31 +16,11 @@ class NearestNeighbors:
         self.X_ = X
         return self
 
-    @property
-    def use_chunks_on_Y(self):
-        raise NotImplementedError()
-
-    def kneighbors(self, X, working_memory=4_000_000, return_distance=False):
+    def kneighbors(self, X, chunk_size=4096, return_distance=False):
         X = check_array(X, order="C")
-        return parallel_knn(
-            X,
-            self.X_,
-            k=self.n_neighbors,
-            working_memory=working_memory,
-            use_chunks_on_Y=self.use_chunks_on_Y,
-        )
-
-
-class NearestNeighborsSingleChunking(NearestNeighbors):
-    @property
-    def use_chunks_on_Y(self):
-        return False
-
-
-class NearestNeighborsDoubleChunking(NearestNeighbors):
-    @property
-    def use_chunks_on_Y(self):
-        return True
+        # Avoid thread over-subscription by BLAS
+        with threadpool_limits(limits=1, user_api="blas"):
+            return parallel_knn(X, self.X_, k=self.n_neighbors, chunk_size=chunk_size)
 
 
 class KeOpsNearestNeighbors(NearestNeighbors):

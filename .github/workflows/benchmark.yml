@@ -29,7 +29,7 @@ jobs:
       - name: Setup miniconda
         uses: conda-incubator/setup-miniconda@v2
         with:
-          python-version: 3.8
+          python-version: 3.9
           activate-environment: pdist_aggregation
           environment-file: environment.yml
           channels: conda-forge
@@ -40,10 +40,6 @@ jobs:
         run: |
           export NUM_CORES=`python -c "import joblib; print(joblib.cpu_count())"`
           export OMP_NUM_THREADS=$NUM_CORES
-          # Avoid threads over-subscription in parallel implementation
-          # TODO: remove once threadpoolctl is set.
-          export MKL_NUM_THREADS=1
-          export OPENBLAS_NUM_THREADS=1
 
       - name: Run benchmark suite
         run: python benchmarks/benchmark.py
