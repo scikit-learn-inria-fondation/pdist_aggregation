@@ -48,9 +48,9 @@ for dataset in datasets:
                     t1_ = time.perf_counter()
                     time_elapsed = round(t1_ - t0_, 5)
 
-                    # Parallel_knn returns Y_n_chunks
+                    # Parallel_knn returns n_chunks run in parallel
                     # We report it in the benchmarks results
-                    Y_n_chunks = (
+                    n_parallel_chunks = (
                         knn_res[1] if isinstance(knn_res, tuple) else np.nan
                     )
 
@@ -60,13 +60,11 @@ for dataset in datasets:
                         n_samples_train=ns_train,
                         n_samples_test=ns_test,
                         n_features=nf,
-                        chunk_info=(chunk_size, Y_n_chunks),
+                        chunk_info=(chunk_size, n_parallel_chunks),
                         n_neighbors=k,
                     )
                     row["time_elapsed"] = time_elapsed
-                    row["throughput"] = (
-                        bytes_processed_data / time_elapsed / one_GiB
-                    )
+                    row["throughput"] = bytes_processed_data / time_elapsed / one_GiB
                     benchmarks = benchmarks.append(row, ignore_index=True)
                     pprint(row)
                     print("---")

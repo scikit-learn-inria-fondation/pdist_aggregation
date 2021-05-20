@@ -185,8 +185,8 @@ cdef int _simultaneous_sort(
 ### K-NN helpers
 
 cdef void _k_closest_on_chunk(
-    const floating[:, ::1] X_test_c,       # IN
     const floating[:, ::1] X_train_c,      # IN
+    const floating[:, ::1] X_test_c,       # IN
     const floating[::1] X_train_sq_norms,  # IN
     const floating *dist_middle_terms,     # IN
     floating *heaps_red_distances,         # IN/OUT
@@ -228,8 +228,8 @@ cdef void _k_closest_on_chunk(
 
 
 cdef int _parallel_knn(
-    const floating[:, ::1] X_test,        # IN
     const floating[:, ::1] X_train,       # IN
+    const floating[:, ::1] X_test,        # IN
     const floating[::1] X_train_sq_norms, # IN
     integral chunk_size,
     integral effective_n_threads,
@@ -243,27 +243,28 @@ cdef int _parallel_knn(
         integral si = sizeof(integral)
         integral n_samples_chunk = max(MIN_CHUNK_SAMPLES, chunk_size)
 
-        integral n_test = X_test.shape[0]
-        integral X_test_n_samples_chunk = min(n_test, n_samples_chunk)
-        integral X_test_n_full_chunks = n_test // X_test_n_samples_chunk
-        integral X_test_n_samples_rem = n_test % X_test_n_samples_chunk
-
         integral n_train = X_train.shape[0]
         integral X_train_n_samples_chunk = min(n_train, n_samples_chunk)
         integral X_train_n_full_chunks = n_train / X_train_n_samples_chunk
         integral X_train_n_samples_rem = n_train % X_train_n_samples_chunk
 
+        integral n_test = X_test.shape[0]
+        integral X_test_n_samples_chunk = min(n_test, n_samples_chunk)
+        integral X_test_n_full_chunks = n_test // X_test_n_samples_chunk
+        integral X_test_n_samples_rem = n_test % X_test_n_samples_chunk
+
         # Counting remainder chunk in total number of chunks
-        integral X_test_n_chunks = X_test_n_full_chunks + (
-            n_test != (X_test_n_full_chunks * X_test_n_samples_chunk)
-        )
         integral X_train_n_chunks = X_train_n_full_chunks + (
             n_train != (X_train_n_full_chunks * X_train_n_samples_chunk)
         )
 
+        integral X_test_n_chunks = X_test_n_full_chunks + (
+            n_test != (X_test_n_full_chunks * X_test_n_samples_chunk)
+        )
+
         integral num_threads = min(X_train_n_chunks, effective_n_threads)
 
-        integral X_test_start, X_test_end, X_train_start, X_train_end
+        integral X_train_start, X_train_end, X_test_start, X_test_end
         integral X_test_chunk_idx, X_train_chunk_idx, idx, jdx
 
         floating *dist_middle_terms_chunks
@@ -302,8 +303,8 @@ cdef int _parallel_knn(
                     X_train_end = X_train_start + X_train_n_samples_chunk
 
                 _k_closest_on_chunk(
-                    X_test[X_test_start:X_test_end, :],
                     X_train[X_train_start:X_train_end, :],
+                    X_test[X_test_start:X_test_end, :],
                     X_train_sq_norms[X_train_start:X_train_end],
                     dist_middle_terms_chunks,
                     heaps_red_distances_chunks,
@@ -346,8 +347,8 @@ cdef int _parallel_knn(
 # Python interface
 
 def parallel_knn(
-    const floating[:, ::1] X_test,
     const floating[:, ::1] X_train,
+    const floating[:, ::1] X_test,
     integral k,
     integral chunk_size = CHUNK_SIZE,
 ):
@@ -363,7 +364,7 @@ def parallel_knn(
         floating[::1] X_train_sq_norms = np.einsum('ij,ij->i', X_train, X_train)
         integral effective_n_threads = _openmp_effective_n_threads()
 
-    X_train_n_chunks = _parallel_knn(X_test, X_train, X_train_sq_norms,
+    X_train_n_chunks = _parallel_knn(X_train, X_test, X_train_sq_norms,
                                      chunk_size, effective_n_threads,
                                      knn_indices, knn_red_distances)
 

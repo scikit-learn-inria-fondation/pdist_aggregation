@@ -19,5 +19,5 @@ class NearestNeighbors:
         # Avoid thread over-subscription by BLAS
         with threadpool_limits(limits=1, user_api="blas"):
             return parallel_knn(
-                X, self._X_train, k=self.n_neighbors, chunk_size=chunk_size
+                self._X_train, X, k=self.n_neighbors, chunk_size=chunk_size
             )

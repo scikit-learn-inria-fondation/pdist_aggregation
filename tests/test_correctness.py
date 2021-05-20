@@ -21,6 +21,6 @@ def test_correctness(n, d, ratio_train_test, n_neighbors, chunk_size, dtype=np.f
     neigh.fit(X_train)
 
     knn_sk = neigh.kneighbors(X_test, return_distance=False)
-    knn, _ = parallel_knn(X_test, X_train, k=n_neighbors, chunk_size=chunk_size)
+    knn, _ = parallel_knn(X_train, X_test, k=n_neighbors, chunk_size=chunk_size)
 
     np.testing.assert_array_equal(knn, knn_sk)
