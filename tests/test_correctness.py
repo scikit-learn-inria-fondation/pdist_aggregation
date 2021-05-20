@@ -9,7 +9,7 @@ from pdist_aggregation import parallel_knn
 @pytest.mark.parametrize("d", [2, 5, 10, 100])
 @pytest.mark.parametrize("ratio_train_test", [10, 2, 1, 0.5])
 @pytest.mark.parametrize("n_neighbors", [1, 10, 100])
-@pytest.mark.parametrize("chunk_size", [2 ** i for i in range(12, 17)])
+@pytest.mark.parametrize("chunk_size", [2 ** i for i in range(9, 13)])
 @pytest.mark.parametrize("use_chunk_on_train", [True, False])
 def test_correctness(
     n,

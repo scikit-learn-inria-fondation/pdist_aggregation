@@ -7,7 +7,7 @@ def main(args=None):
     n = 1e4
     d = 100
     n_neighbors = 100
-    chunk_size = 4096
+    chunk_size = 1024
     np.random.seed(1)
     X_train = np.random.rand(int(n * d)).reshape((-1, d))
     X_test = np.random.rand(int(n * d // 2)).reshape((-1, d))
