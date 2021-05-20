@@ -14,13 +14,13 @@ chunk_sizes = config["chunk_size"]
 n_neighbors = config["n_neighbors"]
 estimators = config["estimators"]
 
-N_TRIALS = 5
+n_trials = config.get("n_trials", 5)
 one_GiB = 1e9
 benchmarks = pd.DataFrame()
 
 
 for dataset in datasets:
-    for trial in range(N_TRIALS):
+    for trial in range(n_trials):
         dataset = {k: int(float(v)) for k, v in dataset.items()}
         ns_train, ns_test, nf = dataset.values()
         X_train = np.random.rand(ns_train, nf)
