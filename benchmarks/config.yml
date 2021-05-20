@@ -28,20 +28,13 @@ datasets:
     n_samples_test: 1e6
     n_features: 1e2
 
-chunk_size: # [2 ** i for i in range(10, 20)]
+chunk_size: # [2 ** i for i in range(9, 13)]
   - 128
   - 256
   - 512
   - 1024
   - 2048
   - 4096
-  - 8192
-  - 16384
-  - 32768
-  - 65536
-  - 131072
-  - 262144
-  - 524288
 
 n_neighbors:
   - 1
