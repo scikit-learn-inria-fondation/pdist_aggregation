@@ -59,7 +59,7 @@ cdef int _push(
 ) nogil except -1:
     """push (val, i_val) into the heap (dist, idx) of the given size"""
     cdef:
-        integral i, ic1, ic2, i_swap
+        integral current_idx, left_child_idx, right_child_idx, swap_idx
 
     # check if val should be in heap
     if val > dist[0]:
@@ -70,36 +70,36 @@ cdef int _push(
     idx[0] = i_val
 
     # descend the heap, swapping values until the max heap criterion is met
-    i = 0
+    current_idx = 0
     while True:
-        ic1 = 2 * i + 1
-        ic2 = ic1 + 1
+        left_child_idx = 2 * current_idx + 1
+        right_child_idx = left_child_idx + 1
 
-        if ic1 >= size:
+        if left_child_idx >= size:
             break
-        elif ic2 >= size:
-            if dist[ic1] > val:
-                i_swap = ic1
+        elif right_child_idx >= size:
+            if dist[left_child_idx] > val:
+                swap_idx = left_child_idx
             else:
                 break
-        elif dist[ic1] >= dist[ic2]:
-            if val < dist[ic1]:
-                i_swap = ic1
+        elif dist[left_child_idx] >= dist[right_child_idx]:
+            if val < dist[left_child_idx]:
+                swap_idx = left_child_idx
             else:
                 break
         else:
-            if val < dist[ic2]:
-                i_swap = ic2
+            if val < dist[right_child_idx]:
+                swap_idx = right_child_idx
             else:
                 break
 
-        dist[i] = dist[i_swap]
-        idx[i] = idx[i_swap]
+        dist[current_idx] = dist[swap_idx]
+        idx[current_idx] = idx[swap_idx]
 
-        i = i_swap
+        current_idx = swap_idx
 
-    dist[i] = val
-    idx[i] = i_val
+    dist[current_idx] = val
+    idx[current_idx] = i_val
 
     return 0
 
