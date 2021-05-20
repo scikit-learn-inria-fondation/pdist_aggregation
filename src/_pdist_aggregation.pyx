@@ -48,7 +48,8 @@ cpdef int _openmp_effective_n_threads(n_threads=None):
     else:
         return min(openmp.omp_get_max_threads(), cpu_count())
 
-### Heaps utilities
+### Heaps utilities, minified from sklearn internals NeighborsHeap
+# https://github.com/scikit-learn/scikit-learn/blob/e4bb9fa86b0df873ad750b6d59090843d9d23d50/sklearn/neighbors/_binary_tree.pxi#L513
 
 cdef int _push(
     floating* dist,
@@ -110,7 +111,7 @@ cdef inline void dual_swap(
     integral i1,
     integral i2
 ) nogil:
-    """swap the values at inex i1 and i2 of both dist and idx"""
+    """swap the values at index i1 and i2 of both dist and idx"""
     cdef:
         floating dtmp = dist[i1]
         integral itmp = idx[i1]
@@ -130,6 +131,10 @@ cdef int _simultaneous_sort(
     """
     Perform a recursive quicksort on the dist array, simultaneously
     performing the same swaps on the idx array.
+
+    TODO: test if the following algorithms are better:
+      - introselect via std::nth_element
+      - heap-sort-like
     """
     cdef:
         integral pivot_idx, i, store_idx
