@@ -331,14 +331,13 @@ cdef int _parallel_knn(
             free(heaps_indices_chunks)
 
         # end: with nogil, parallel
-        with nogil, parallel(num_threads=num_threads):
-
-            for idx in prange(n_test, schedule='static'):
-                _simultaneous_sort(
-                    &knn_red_distances[idx, 0],
-                    &knn_indices[idx, 0],
-                    k,
-                )
+        for idx in prange(n_test,schedule='static',
+                          nogil=True, num_threads=num_threads):
+            _simultaneous_sort(
+                &knn_red_distances[idx, 0],
+                &knn_indices[idx, 0],
+                k,
+            )
 
         # end: with nogil, parallel
     # end: for X_test_chunk_idx
