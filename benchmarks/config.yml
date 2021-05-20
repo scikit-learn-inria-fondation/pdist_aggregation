@@ -8,9 +8,14 @@ estimators:
   - name: pykeops
     estimator: nn.KeOpsNearestNeighbors
     chunk: False
-  - name: "Double chunking"
-    estimator: nn.NearestNeighbors
+  - name: "Parallel on X_train"
+    estimator: nn.NearestNeighborsParrallelXtrain
     chunk: True
+  - name: "Parallel on X_test"
+    estimator: nn.NearestNeighborsParrallelXtest
+    chunk: True
+
+n_trials: 5
 
 datasets:
   # X_train taller
