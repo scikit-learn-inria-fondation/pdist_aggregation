@@ -327,7 +327,7 @@ cdef int _parallel_knn_on_X_test(
         free(heaps_red_distances_chunks)
 
     # end: with nogil, parallel
-    return n_samples_chunk
+    return X_test_n_chunks
 
 
 cdef int _parallel_knn_on_X_train(

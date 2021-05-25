@@ -43,6 +43,12 @@ for dataset in datasets:
                     if chunk:
                         knn_kwargs["chunk_size"] = chunk_size
 
+                    print(f"Start trial #{trial + 1} for: {name}, "
+                          f"n_samples_train={ns_train}, "
+                          f"n_samples_test={ns_test}, "
+                          f"n_features={nf}, "
+                          f"n_neighbors={k}")
+
                     t0_ = time.perf_counter()
                     knn_res = nn_instance.kneighbors(**knn_kwargs)
                     t1_ = time.perf_counter()

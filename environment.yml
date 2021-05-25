@@ -16,6 +16,7 @@ dependencies:
   - threadpoolctl
   - pre-commit
   - libgcc
+  - pytest
   - pip:
       - --pre
       - --extra-index https://pypi.anaconda.org/scipy-wheels-nightly/simple
