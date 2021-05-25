@@ -1,0 +1,72 @@
+name: Run benchmarks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [closed]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - name: Checkout repo content
+        uses: actions/checkout@v2
+
+      - name: Cache conda
+        uses: actions/cache@v2
+        env:
+          CACHE_NUMBER: 0
+        with:
+          path: ~/conda_pkgs_dir
+          key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{
+            hashFiles('environment.yml') }}-${{
+            hashFiles('src/_pdist_aggregation.pyx') }}
+
+      - name: Setup miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: 3.9
+          activate-environment: pdist_aggregation
+          environment-file: environment.yml
+          channels: conda-forge
+          channel-priority: flexible
+          use-only-tar-bz2: true
+
+      - name: Set config vars for parallelism
+        run: |
+          export NUM_CORES=`python -c "import joblib; print(joblib.cpu_count())"`
+          export OMP_NUM_THREADS=$NUM_CORES
+
+      - name: Run tests
+        run: |
+          # Cython is cloned, so we scope the folder for tests
+          pytest tests
+
+      - name: Run benchmark suite
+        run: python benchmarks/benchmark.py
+
+      - name: Convert notebook to html
+        run: |
+          jupyter nbconvert --to html --execute --output benchmarks/results/index.html visualization.ipynb
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v2
+        with:
+          name: results
+          path: benchmarks/results
+
+      - name: Download docs folder
+        uses: actions/download-artifact@v2
+        with:
+          name: results
+          path: results
+
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@4.1.1
+        with:
+          branch: gh-pages
+          folder: results
