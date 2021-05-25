@@ -36,7 +36,7 @@ datasets:
     n_samples_test: 1e5
     n_features: 500
 
-chunk_size: # [2 ** i for i in range(9, 13)]
+chunk_size: # [2 ** i for i in range(7, 13)]
   - 128
   - 256
   - 512
