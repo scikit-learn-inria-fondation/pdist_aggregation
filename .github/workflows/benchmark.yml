@@ -41,6 +41,10 @@ jobs:
           export NUM_CORES=`python -c "import joblib; print(joblib.cpu_count())"`
           export OMP_NUM_THREADS=$NUM_CORES
 
+      - name: Run tests
+        run: |
+          pytest
+
       - name: Run benchmark suite
         run: python benchmarks/benchmark.py
 
