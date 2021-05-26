@@ -1,4 +1,5 @@
 import importlib
+import subprocess
 import time
 from pprint import pprint
 
@@ -19,6 +20,12 @@ n_trials = config.get("n_trials", 5)
 one_GiB = 1e9
 benchmarks = pd.DataFrame()
 
+# TODO: This is ugly, but I haven't found something better.
+commit = (
+    str(subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]))
+    .replace("b'", "")
+    .replace("\\n'", "")
+)
 
 for dataset in datasets:
     for trial in range(n_trials):
@@ -78,15 +85,15 @@ for dataset in datasets:
                         chunk_info=(chunk_size, n_parallel_chunks),
                         n_neighbors=k,
                         max_mem_usage=np.max(mem_usage),
+                        time_elapsed=time_elapsed,
+                        throughput=bytes_processed_data / time_elapsed / one_GiB,
                     )
-                    row["time_elapsed"] = time_elapsed
-                    row["throughput"] = bytes_processed_data / time_elapsed / one_GiB
                     benchmarks = benchmarks.append(row, ignore_index=True)
                     pprint(row)
                     print("---")
 
                     benchmarks.to_csv(
-                        "benchmarks/results/results.csv",
+                        f"benchmarks/results/results_{commit}.csv",
                         mode="w+",
                         index=False,
                     )
