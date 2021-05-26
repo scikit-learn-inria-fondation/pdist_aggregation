@@ -5,6 +5,7 @@ from pprint import pprint
 import numpy as np
 import pandas as pd
 import yaml
+from memory_profiler import memory_usage
 
 with open("benchmarks/config.yml", "r") as f:
     config = yaml.full_load(f)
@@ -43,14 +44,22 @@ for dataset in datasets:
                     if chunk:
                         knn_kwargs["chunk_size"] = chunk_size
 
-                    print(f"Start trial #{trial + 1} for: {name}, "
-                          f"n_samples_train={ns_train}, "
-                          f"n_samples_test={ns_test}, "
-                          f"n_features={nf}, "
-                          f"n_neighbors={k}")
+                    print(
+                        f"Start trial #{trial + 1} for: {name}, "
+                        f"n_samples_train={ns_train}, "
+                        f"n_samples_test={ns_test}, "
+                        f"n_features={nf}, "
+                        f"n_neighbors={k}"
+                    )
 
                     t0_ = time.perf_counter()
-                    knn_res = nn_instance.kneighbors(**knn_kwargs)
+                    mem_usage, knn_res = memory_usage(
+                        (nn_instance.kneighbors, knn_kwargs),
+                        interval=0.01,
+                        retval=True,
+                        include_children=True,
+                        multiprocess=True,
+                    )
                     t1_ = time.perf_counter()
                     time_elapsed = round(t1_ - t0_, 5)
 
@@ -68,6 +77,7 @@ for dataset in datasets:
                         n_features=nf,
                         chunk_info=(chunk_size, n_parallel_chunks),
                         n_neighbors=k,
+                        max_mem_usage=np.max(mem_usage),
                     )
                     row["time_elapsed"] = time_elapsed
                     row["throughput"] = bytes_processed_data / time_elapsed / one_GiB
