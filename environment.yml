@@ -13,7 +13,9 @@ dependencies:
   - scikit-learn-intelex
   - pyaml
   - pip
+  - threadpoolctl
   - pre-commit
+  - pytest
   - pip:
       - --pre
       - --index-url https://pypi.anaconda.org/scipy-wheels-nightly/simple

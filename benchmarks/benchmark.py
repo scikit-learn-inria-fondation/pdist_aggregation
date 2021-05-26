@@ -10,17 +10,17 @@ with open("benchmarks/config.yml", "r") as f:
     config = yaml.full_load(f)
 
 datasets = config["datasets"]
-working_memory_range = config["working_memory_range"]
+chunk_sizes = config["chunk_size"]
 n_neighbors = config["n_neighbors"]
 estimators = config["estimators"]
 
-N_TRIALS = 5
+n_trials = config.get("n_trials", 5)
 one_GiB = 1e9
 benchmarks = pd.DataFrame()
 
 
 for dataset in datasets:
-    for trial in range(N_TRIALS):
+    for trial in range(n_trials):
         dataset = {k: int(float(v)) for k, v in dataset.items()}
         ns_train, ns_test, nf = dataset.values()
         X_train = np.random.rand(ns_train, nf)
@@ -34,23 +34,31 @@ for dataset in datasets:
             estim_class = getattr(importlib.import_module(module), class_name)
 
             for k in n_neighbors:
-                for working_memory in working_memory_range if chunk else [0]:
+                for chunk_size in chunk_sizes if chunk else [0]:
                     nn_instance = estim_class(n_neighbors=k, algorithm="brute").fit(
                         X_train
                     )
 
                     knn_kwargs = {"X": X_test, "return_distance": False}
                     if chunk:
-                        knn_kwargs["working_memory"] = working_memory
+                        knn_kwargs["chunk_size"] = chunk_size
+
+                    print(f"Start trial #{trial + 1} for: {name}, "
+                          f"n_samples_train={ns_train}, "
+                          f"n_samples_test={ns_test}, "
+                          f"n_features={nf}, "
+                          f"n_neighbors={k}")
 
                     t0_ = time.perf_counter()
                     knn_res = nn_instance.kneighbors(**knn_kwargs)
                     t1_ = time.perf_counter()
                     time_elapsed = round(t1_ - t0_, 5)
 
-                    # Parallel_knn returns the size of samples at run time
+                    # Parallel_knn returns n_chunks run in parallel
                     # We report it in the benchmarks results
-                    n = knn_res[1] if isinstance(knn_res, tuple) else np.nan
+                    n_parallel_chunks = (
+                        knn_res[1] if isinstance(knn_res, tuple) else np.nan
+                    )
 
                     row = dict(
                         trial=trial,
@@ -58,7 +66,7 @@ for dataset in datasets:
                         n_samples_train=ns_train,
                         n_samples_test=ns_test,
                         n_features=nf,
-                        working_memory=(working_memory, n),
+                        chunk_info=(chunk_size, n_parallel_chunks),
                         n_neighbors=k,
                     )
                     row["time_elapsed"] = time_elapsed
