@@ -21,8 +21,7 @@ from libc.stdlib cimport free, malloc
 from cython cimport floating, integral
 from cython.parallel cimport parallel, prange
 
-# TODO: Set with a quick tuning, can be improved
-DEF CHUNK_SIZE = 1024  # number of vectors
+DEF CHUNK_SIZE = 256  # number of vectors
 
 DEF MIN_CHUNK_SAMPLES = 20
 
