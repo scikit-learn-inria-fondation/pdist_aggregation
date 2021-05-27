@@ -30,7 +30,8 @@ if __name__ == "__main__":
     RESULTS_FOLDER = f"benchmarks/results/{BENCH_NAME}"
 
     df = pd.read_csv(glob.glob(f"{RESULTS_FOLDER}/*.csv")[0])
-    env_specs = json.loads(glob.glob(f"{RESULTS_FOLDER}/*.json")[0])
+    with open(glob.glob(f"{RESULTS_FOLDER}/*.json")[0], "r") as json_file:
+        env_specs = json.load(json_file)
 
     cols = [
         "n_samples_train",
@@ -75,4 +76,4 @@ if __name__ == "__main__":
             % vals
         )
         _ = fig.suptitle(title, fontsize=16)
-        plt.savefig(f"BENCH_NAME_{i}.pdf", bbox_inches="tight")
+        plt.savefig(f"{BENCH_NAME}_{i}.pdf", bbox_inches="tight")

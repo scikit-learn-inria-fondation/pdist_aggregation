@@ -41,11 +41,14 @@ run-parallel:
 test:
 	pytest tests
 
-## report: Create a report
-.PHONY: report
-report:
+## report-sequential: Create a report for the sequential run
+.PHONY: report-sequential
+report-sequential:
 	python benchmarks/report.py ${RUN_PREFIX}_seq
-	pdfunite benchmark/*.pdf ${RUN_PREFIX}_seq_results.pdf
+	pdfunite `ls *.pdf` ${RUN_PREFIX}_seq_results.pdf
 
+## report-parallel: Create a report for the sequential run
+.PHONY: report-parallel
+report-parallel:
 	python benchmarks/report.py ${RUN_PREFIX}_par
-	pdfunite benchmark/*.pdf ${RUN_PREFIX}_par_results.pdf
+	pdfunite `ls *.pdf` ${RUN_PREFIX}_par_results.pdf
