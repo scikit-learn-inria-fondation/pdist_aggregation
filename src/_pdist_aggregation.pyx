@@ -454,7 +454,7 @@ def parallel_knn(
     const floating[:, ::1] X_test,
     integral k,
     integral chunk_size = CHUNK_SIZE,
-    bint use_chunk_on_train = True,
+    str strategy = "auto",
 ):
     # TODO: we could use uint32 here, working up to 4,294,967,295 indices
     int_dtype = np.int32 if integral is int else np.int64
@@ -468,17 +468,25 @@ def parallel_knn(
         floating[::1] X_train_sq_norms = np.einsum('ij,ij->i', X_train, X_train)
         integral effective_n_threads = _openmp_effective_n_threads()
 
-    if use_chunk_on_train:
+    if strategy == 'auto':
+        if 4 * chunk_size * effective_n_threads < X_test.shape[0]:
+            strategy = 'chunk_on_test'
+        else:
+            strategy = 'chunk_on_train'
+
+    if strategy == 'chunk_on_train':
         n_parallel_chunks = _parallel_knn_on_X_train(
             X_train, X_test, X_train_sq_norms,
             chunk_size, effective_n_threads,
             knn_indices, knn_red_distances
         )
-    else:
+    elif strategy == 'chunk_on_test':
         n_parallel_chunks = _parallel_knn_on_X_test(
             X_train, X_test, X_train_sq_norms,
             chunk_size, effective_n_threads,
             knn_indices, knn_red_distances
         )
+    else:
+        raise RuntimeError(f"strategy '{strategy}' not supported.")
 
     return np.asarray(knn_indices), n_parallel_chunks

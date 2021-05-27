@@ -53,11 +53,11 @@ if __name__ == "__main__":
         fig = plt.figure(figsize=(24, 13.5))
         ax = plt.gca()
         splot = sns.barplot(
-            y="info", x="throughput", hue="implementation", data=df, ax=ax
+            y="chunk_size", x="throughput", hue="implementation", data=df, ax=ax
         )
         _ = ax.set_xlabel("Throughput (in GB/s)")
         _ = ax.set_ylabel(
-            "Chunk size (number of vectors), Total Data structures size (in bytes)"
+            "Chunk size (number of vectors)"
         )
         _ = ax.tick_params(labelrotation=45)
         for p in splot.patches:
