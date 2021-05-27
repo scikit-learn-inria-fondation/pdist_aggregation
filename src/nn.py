@@ -30,6 +30,7 @@ class NearestNeighbors:
                 k=self.n_neighbors,
                 chunk_size=chunk_size,
                 use_chunk_on_train=self._use_chunk_on_train(),
+                return_distance=return_distance,
             )
 
 
