@@ -45,7 +45,8 @@ cpdef int _openmp_effective_n_threads(n_threads=None):
         # to exceed the number of cpus.
         return openmp.omp_get_max_threads()
     else:
-        return min(openmp.omp_get_max_threads(), cpu_count())
+        return min(openmp.omp_get_max_threads(),
+                   cpu_count(only_physical_cores=True))
 
 ### Heaps utilities, minified from sklearn internals NeighborsHeap
 # https://github.com/scikit-learn/scikit-learn/blob/e4bb9fa86b0df873ad750b6d59090843d9d23d50/sklearn/neighbors/_binary_tree.pxi#L513
