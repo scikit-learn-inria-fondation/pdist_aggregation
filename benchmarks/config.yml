@@ -12,31 +12,36 @@ estimators:
     estimator: nn.NearestNeighborsParrallelXtest
     chunk: True
 
-n_trials: 5
+n_trials: 1
 
 datasets:
-  # X_train taller
+  # Motives: a few query point < 256 (observed robust chunk size)
+  - n_samples_train: 1e6
+    n_samples_test: 1
+    n_features: 100
+  - n_samples_train: 1e6
+    n_samples_test: 50
+    n_features: 100
+  - n_samples_train: 1e6
+    n_samples_test: 256
+    n_features: 100
+
+  # Motives: Intermediate datasets
   - n_samples_train: 1e5
     n_samples_test: 1e3
-    n_features: 50
-  - n_samples_train: 1e5
-    n_samples_test: 1e3
-    n_features: 1e2
+    n_features: 100
   - n_samples_train: 1e5
     n_samples_test: 1e3
     n_features: 500
-  # X_test taller
   - n_samples_train: 1e3
     n_samples_test: 1e5
-    n_features: 50
-  - n_samples_train: 1e3
-    n_samples_test: 1e5
-    n_features: 1e2
+    n_features: 100
   - n_samples_train: 1e3
     n_samples_test: 1e5
     n_features: 500
 
-chunk_size: # [2 ** i for i in range(7, 13)]
+chunk_size: # [2 ** i for i in range(6, 13)]
+  - 64
   - 128
   - 256
   - 512
@@ -45,6 +50,4 @@ chunk_size: # [2 ** i for i in range(7, 13)]
   - 4096
 
 n_neighbors:
-  - 1
   - 10
-  - 100
