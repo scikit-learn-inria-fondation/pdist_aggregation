@@ -1,4 +1,7 @@
-SHELL = /bin/sh
+SHELL = /bin/bash
+
+# Note that the extra activate is needed to ensure that the activate floats env to the front of PATH
+CONDA_ACTIVATE_CMD=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activate ; conda activate
 
 .DEFAULT_GOAL := all
 
@@ -9,7 +12,7 @@ help: Makefile
 
 ## all: Run the main targets
 .PHONY: all
-all: install activate setup-run run-sequential report
+all: install benchmark-sequential benchmark-parallel
 
 ## install: Install conda env.
 .PHONY: install
@@ -19,33 +22,23 @@ install:
 ## activate: Activate environment.
 .PHONY: activate
 activate:
-	conda activate pdist_aggregation
+	$(CONDA_ACTIVATE_CMD) pdist_aggregation
+	@echo "Python executable: `which python`"
 
-## setup-run: Setup env variables for the run
-.PHONY: setup-run
-setup-run:
-	export RUN_PREFIX=${date '+%Y-%m-%d-%H-%M-%S'}
+## benchmark-sequential: Run benchmarks for sequential execution, 'NAME' variable can be provided
+# Uses taskset to cap to a cpu solely
+.PHONY: benchmark-sequential
+benchmark-sequential: activate
+		@[ "${NAME}" ] || export NAME=comp
+		taskset -c 0 python benchmarks/benchmark.py ${NAME}_seq
 
-## run-sequential: Run benchmarks for sequential mode (capped via taskset(1)).
-.PHONY: run-sequential
-run-sequential:
-	taskset -c 0 python benchmarks/benchmark.py ${RUN_PREFIX}_seq
-
-## run-parallel: Run benchmarks (default parallel execution)
-.PHONY: run-parallel
-run-parallel:
-	python benchmarks/benchmark.py ${RUN_PREFIX}_par
+## benchmark-parallel: Run benchmarks for parallel execution, 'NAME' variable can be provided
+.PHONY: benchmark-parallel
+benchmark-parallel: activate
+		@[ "${NAME}" ] || export NAME=comp
+		python benchmarks/benchmark.py ${NAME}_par
 
 ## test: Launch all the test.
 .PHONY: test
-test:
+test: activate
 	pytest tests
-
-## report: Create a report
-.PHONY: report
-report:
-	python benchmarks/report.py ${RUN_PREFIX}_seq
-	pdfunite benchmark/*.pdf ${RUN_PREFIX}_seq_results.pdf
-
-	python benchmarks/report.py ${RUN_PREFIX}_par
-	pdfunite benchmark/*.pdf ${RUN_PREFIX}_par_results.pdf
