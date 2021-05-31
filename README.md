@@ -6,7 +6,7 @@
 ```bash
 git clone git@github.com:scikit-learn-inria-fondation/pdist_aggregation.git
 cd pdist_aggregation
-make NAME=comparison
+make
 ```
 
 ## Setup
