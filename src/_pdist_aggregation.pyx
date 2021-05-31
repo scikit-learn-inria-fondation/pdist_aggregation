@@ -21,8 +21,7 @@ from libc.stdlib cimport free, malloc
 from cython cimport floating, integral
 from cython.parallel cimport parallel, prange
 
-# TODO: Set with a quick tuning, can be improved
-DEF CHUNK_SIZE = 1024  # number of vectors
+DEF CHUNK_SIZE = 256  # number of vectors
 
 DEF MIN_CHUNK_SAMPLES = 20
 
@@ -46,7 +45,8 @@ cpdef int _openmp_effective_n_threads(n_threads=None):
         # to exceed the number of cpus.
         return openmp.omp_get_max_threads()
     else:
-        return min(openmp.omp_get_max_threads(), cpu_count())
+        return min(openmp.omp_get_max_threads(),
+                   cpu_count(only_physical_cores=True))
 
 ### Heaps utilities, minified from sklearn internals NeighborsHeap
 # https://github.com/scikit-learn/scikit-learn/blob/e4bb9fa86b0df873ad750b6d59090843d9d23d50/sklearn/neighbors/_binary_tree.pxi#L513
@@ -519,7 +519,7 @@ def parallel_knn(
     const floating[:, ::1] X_test,
     integral k,
     integral chunk_size = CHUNK_SIZE,
-    bint use_chunk_on_train = True,
+    str strategy = "auto",
 ):
     # TODO: we could use uint32 here, working up to 4,294,967,295 indices
     int_dtype = np.int32 if integral is int else np.int64
@@ -535,17 +535,25 @@ def parallel_knn(
                                                        X_train_upcasted)
         integral effective_n_threads = _openmp_effective_n_threads()
 
-    if use_chunk_on_train:
+    if strategy == 'auto':
+        if 4 * chunk_size * effective_n_threads < X_test.shape[0]:
+            strategy = 'chunk_on_test'
+        else:
+            strategy = 'chunk_on_train'
+
+    if strategy == 'chunk_on_train':
         n_parallel_chunks = _parallel_knn_on_X_train(
             X_train, X_test, X_train_sq_norms,
             chunk_size, effective_n_threads,
             knn_indices, knn_red_distances
         )
-    else:
+    elif strategy == 'chunk_on_test':
         n_parallel_chunks = _parallel_knn_on_X_test(
             X_train, X_test, X_train_sq_norms,
             chunk_size, effective_n_threads,
             knn_indices, knn_red_distances
         )
+    else:
+        raise RuntimeError(f"strategy '{strategy}' not supported.")
 
     return np.asarray(knn_indices), n_parallel_chunks

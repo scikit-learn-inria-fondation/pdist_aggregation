@@ -17,7 +17,7 @@ class NearestNeighbors:
         return self
 
     @abc.abstractmethod
-    def _use_chunk_on_train(self):
+    def _strategy(self):
         pass
 
     def kneighbors(self, X, chunk_size=4096, return_distance=False):
@@ -29,15 +29,20 @@ class NearestNeighbors:
                 X,
                 k=self.n_neighbors,
                 chunk_size=chunk_size,
-                use_chunk_on_train=self._use_chunk_on_train(),
+                strategy=self._strategy(),
             )
 
 
-class NearestNeighborsParrallelXtrain(NearestNeighbors):
-    def _use_chunk_on_train(self):
-        return True
+class NearestNeighborsParallelXtrain(NearestNeighbors):
+    def _strategy(self):
+        return "chunk_on_train"
 
 
-class NearestNeighborsParrallelXtest(NearestNeighbors):
-    def _use_chunk_on_train(self):
-        return False
+class NearestNeighborsParallelXtest(NearestNeighbors):
+    def _strategy(self):
+        return "chunk_on_test"
+
+
+class NearestNeighborsParallelAuto(NearestNeighbors):
+    def _strategy(self):
+        return "auto"
