@@ -228,6 +228,9 @@ def report(results_folder, bench_name):
 
     df[cols] = df[cols].astype(np.uint32)
 
+    # We need string for grouping
+    df["chunk_info"] = df.chunk_size.apply(str)
+
     df_grouped = df.groupby(
         ["n_samples_train", "n_samples_test", "n_features", "n_neighbors"]
     )
@@ -237,7 +240,7 @@ def report(results_folder, bench_name):
         fig = plt.figure(figsize=(24, 13.5))
         ax = plt.gca()
         splot = sns.barplot(
-            y="chunk_size", x="throughput", hue="implementation", data=df, ax=ax
+            y="chunk_info", x="throughput", hue="implementation", data=df, ax=ax
         )
         _ = ax.set_xlabel("Throughput (in GB/s)")
         _ = ax.set_ylabel("Chunk size (number of vectors)")
@@ -257,7 +260,7 @@ def report(results_folder, bench_name):
 
         title = (
             f"NearestNeighbors@{env_specs['commit']} - "
-            f"Euclidean Distance, dtype=np.float64, {df.trial.max() + 1} trials - Bench. Name: {bench_name})\n"
+            f"Euclidean Distance, dtype=np.float64, {df.trial.max() + 1} trials - Bench. Name: {bench_name}\n"
         )
         title += (
             "n_samples_train=%s - n_samples_test=%s - n_features=%s - n_neighbors=%s"
