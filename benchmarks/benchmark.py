@@ -11,6 +11,7 @@ import pandas as pd
 import threadpoolctl
 import yaml
 from memory_profiler import memory_usage
+from sklearn import set_config
 
 
 def get_cache_info():
@@ -95,7 +96,6 @@ if __name__ == "__main__":
     parser.add_argument("prefix")
 
     args = parser.parse_args()
-
     with open("benchmarks/config.yml", "r") as f:
         config = yaml.full_load(f)
 
@@ -129,6 +129,11 @@ if __name__ == "__main__":
         cache_info=get_cache_info(),
         config=config,
     )
+
+    # We explicitly remove checks on inputs (defined in sklearn, but also
+    # used by daal4py and the proposed implementation) as we solely want
+    # to compare the implementations.
+    set_config(assume_finite=True)
 
     with open(ENV_SPECS_FILE, "w") as outfile:
         json.dump(env_specs, outfile)
