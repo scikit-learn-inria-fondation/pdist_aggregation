@@ -1,7 +1,6 @@
 SHELL = /bin/bash
 PROJECT = pdist_aggregation
 
-# Note that the extra activate is needed to ensure that the activate floats env to the front of PATH
 VENV_PATH=`conda info --base`/envs/${PROJECT}
 PYTHON_EXECUTABLE=${VENV_PATH}/bin/python
 PYTEST_EXECUTABLE=${VENV_PATH}/bin/pytest
