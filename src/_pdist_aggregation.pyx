@@ -34,6 +34,7 @@ from sklearn.utils._cython_blas cimport (
   NoTrans,
   RowMajor,
   Trans,
+  _axpy,
   _gemm,
 )
 
@@ -447,16 +448,42 @@ cdef int _parallel_knn_on_X_train(
     # end: for X_test_chunk_idx
     return X_train_n_chunks
 
+cdef int _translate(
+    floating[:, ::1] X,              # IN/OUT
+    const floating[::1] direction,   # IN
+    const floating alpha,            # IN
+    const integral num_threads,      # IN
+) nogil except -1:
+    """
+    Translate a set of points `X` on an unormalised `direction` with a
+    given factor `alpha`.
+
+        X[i, :] += alpha * direction, for i in range X.shape[0]
+
+    Translations are made in an embarrasingly parallel fashion.
+
+    :param X: array of shape (n, d)
+    :param direction: array of shape (d)
+    :param alpha: the factor for the translation
+    :param num_threads: number of threads to use for the computations
+    :return:
+    """
+    cdef integral i
+    cdef integral stride = 1
+
+    for i in prange(X.shape[0], schedule='static', num_threads=num_threads):
+        # X[i, :] += alpha * direction
+        _axpy(X.shape[1], alpha, &direction[0], stride, &X[i, 0], stride)
+
 # Python interface
 
 def parallel_knn(
-    const floating[:, ::1] X_train,
-    const floating[:, ::1] X_test,
+    floating[:, ::1] X_train,
+    floating[:, ::1] X_test,
     integral k,
     integral chunk_size = CHUNK_SIZE,
     str strategy = "auto",
 ):
-    # TODO: we could use uint32 here, working up to 4,294,967,295 indices
     int_dtype = np.int32 if integral is int else np.int64
     float_dtype = np.float32 if floating is float else np.float64
     cdef:
@@ -465,28 +492,59 @@ def parallel_knn(
         floating[:, ::1] knn_red_distances = np.full((X_test.shape[0], k),
                                                      FLOAT_INF,
                                                      dtype=float_dtype)
-        floating[::1] X_train_sq_norms = np.einsum('ij,ij->i', X_train, X_train)
+
         integral effective_n_threads = _openmp_effective_n_threads()
+        floating[::1] X_train_sq_norms
 
-    if strategy == 'auto':
-        if 4 * chunk_size * effective_n_threads < X_test.shape[0]:
-            strategy = 'chunk_on_test'
+        # When using 'fast-euclidian', precision for computations is treaded
+        # against speed, computing distances as:
+        #
+        #             ||x - y||² = ||x||² - 2 x.T y + ||y||²
+        #
+        # Where, in practice:
+        #    1. ||x||²    is not computed as it is irrelevant for the reduction
+        #    2. - 2 x.T y is computed using the gemm trick
+        #    3. ||y||²    is computed using the einsum trick (see bellow)
+        #
+        # This can be _catastrophic_ for points far from the origin.
+        #
+        # This can be mitigated by translating the points forth
+        # on a target center (which aims at minimising numerical imprecision)
+        # and back on their initial position.
+        floating[::1] target_center = np.asarray(X_test).mean(axis=0)
+
+    try:
+        # Centering on the target center
+        _translate(X_train, target_center, -1., effective_n_threads)
+        _translate(X_test, target_center, -1., effective_n_threads)
+        X_train_sq_norms = np.einsum('ij,ij->i', X_train, X_train)
+
+        if strategy == 'auto':
+            if 4 * chunk_size * effective_n_threads < X_test.shape[0]:
+                strategy = 'chunk_on_test'
+            else:
+                strategy = 'chunk_on_train'
+
+        if strategy == 'chunk_on_train':
+            n_parallel_chunks = _parallel_knn_on_X_train(
+                X_train, X_test, X_train_sq_norms,
+                chunk_size, effective_n_threads,
+                knn_indices, knn_red_distances
+            )
+        elif strategy == 'chunk_on_test':
+            n_parallel_chunks = _parallel_knn_on_X_test(
+                X_train, X_test, X_train_sq_norms,
+                chunk_size, effective_n_threads,
+                knn_indices, knn_red_distances
+            )
         else:
-            strategy = 'chunk_on_train'
-
-    if strategy == 'chunk_on_train':
-        n_parallel_chunks = _parallel_knn_on_X_train(
-            X_train, X_test, X_train_sq_norms,
-            chunk_size, effective_n_threads,
-            knn_indices, knn_red_distances
-        )
-    elif strategy == 'chunk_on_test':
-        n_parallel_chunks = _parallel_knn_on_X_test(
-            X_train, X_test, X_train_sq_norms,
-            chunk_size, effective_n_threads,
-            knn_indices, knn_red_distances
-        )
-    else:
-        raise RuntimeError(f"strategy '{strategy}' not supported.")
+            raise RuntimeError(f"strategy '{strategy}' not supported.")
+    except RuntimeError as e:
+        raise e
+    finally:
+        # Translating back to the original position, even in the case
+        # of an exception
+        _translate(X_train, target_center, 1., effective_n_threads)
+        _translate(X_test, target_center, 1., effective_n_threads)
 
     return np.asarray(knn_indices), n_parallel_chunks
