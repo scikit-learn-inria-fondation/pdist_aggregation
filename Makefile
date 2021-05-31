@@ -25,16 +25,17 @@ activate:
 	$(CONDA_ACTIVATE_CMD) pdist_aggregation
 	@echo "Python executable: `which python`"
 
-## benchmark-sequential: Run benchmarks for sequential mode (capped via taskset(1)), 'NAME' variable has to be provided needed
+## benchmark-sequential: Run benchmarks for sequential execution, 'NAME' variable can be provided
+# Uses taskset to cap to a cpu solely
 .PHONY: benchmark-sequential
 benchmark-sequential: activate
-		@[ "${NAME}" ] || ( echo ">> NAME must be set with 'make command NAME=value'"; exit 1 )
+		@[ "${NAME}" ] || export NAME=comp
 		taskset -c 0 python benchmarks/benchmark.py ${NAME}_seq
 
-## benchmark-parallel: Run benchmarks (default parallel execution), 'NAME' variable has to be provided needed
+## benchmark-parallel: Run benchmarks for parallel execution, 'NAME' variable can be provided
 .PHONY: benchmark-parallel
 benchmark-parallel: activate
-		@[ "${NAME}" ] || ( echo ">> NAME must be set with 'make command NAME=value'"; exit 1 )
+		@[ "${NAME}" ] || export NAME=comp
 		python benchmarks/benchmark.py ${NAME}_par
 
 ## test: Launch all the test.
