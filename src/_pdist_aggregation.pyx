@@ -255,7 +255,7 @@ cdef int _parallel_knn_on_X_test(
 
         integral n_train = X_train.shape[0]
         integral X_train_n_samples_chunk = min(n_train, n_samples_chunk)
-        integral X_train_n_full_chunks = n_train / X_train_n_samples_chunk
+        integral X_train_n_full_chunks = n_train // X_train_n_samples_chunk
         integral X_train_n_samples_rem = n_train % X_train_n_samples_chunk
 
         integral n_test = X_test.shape[0]
@@ -326,7 +326,7 @@ cdef int _parallel_knn_on_X_test(
                 for idx in range(X_train_end - X_train_start):
                     for jdx in range(d):
                         X_train_c_upcasted[idx * d + jdx] = (
-                            <np.float64_t> X_test[X_train_start + idx, jdx]
+                            <np.float64_t> X_train[X_train_start + idx, jdx]
                         )
 
                 _k_closest_on_chunk(
@@ -383,7 +383,7 @@ cdef int _parallel_knn_on_X_train(
 
         integral n_train = X_train.shape[0]
         integral X_train_n_samples_chunk = min(n_train, n_samples_chunk)
-        integral X_train_n_full_chunks = n_train / X_train_n_samples_chunk
+        integral X_train_n_full_chunks = n_train // X_train_n_samples_chunk
         integral X_train_n_samples_rem = n_train % X_train_n_samples_chunk
 
         integral n_test = X_test.shape[0]
