@@ -230,7 +230,6 @@ def report(results_folder, bench_name):
 
     # We need string for grouping
     df["chunk_info"] = df.chunk_size.apply(str)
-
     df_grouped = df.groupby(
         ["n_samples_train", "n_samples_test", "n_features", "n_neighbors"]
     )

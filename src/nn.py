@@ -30,6 +30,7 @@ class NearestNeighbors:
                 k=self.n_neighbors,
                 chunk_size=chunk_size,
                 strategy=self._strategy(),
+                return_distance=return_distance,
             )
 
 
