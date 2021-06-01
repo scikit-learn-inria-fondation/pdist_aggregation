@@ -1,7 +1,9 @@
 SHELL = /bin/bash
+PROJECT = pdist_aggregation
 
-# Note that the extra activate is needed to ensure that the activate floats env to the front of PATH
-CONDA_ACTIVATE_CMD=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activate ; conda activate
+VENV_PATH=`conda info --base`/envs/${PROJECT}
+PYTHON_EXECUTABLE=${VENV_PATH}/bin/python
+PYTEST_EXECUTABLE=${VENV_PATH}/bin/pytest
 
 .DEFAULT_GOAL := all
 
@@ -19,26 +21,20 @@ all: install benchmark-sequential benchmark-parallel
 install:
 	conda env create --force -f environment.yml
 
-## activate: Activate environment.
-.PHONY: activate
-activate:
-	$(CONDA_ACTIVATE_CMD) pdist_aggregation
-	@echo "Python executable: `which python`"
-
 ## benchmark-sequential: Run benchmarks for sequential execution, 'NAME' variable can be provided
 # Uses taskset to cap to a cpu solely
 .PHONY: benchmark-sequential
-benchmark-sequential: activate
+benchmark-sequential:
 		@[ "${NAME}" ] || export NAME=comp
-		taskset -c 0 python benchmarks/benchmark.py ${NAME}_seq
+		taskset -c 0 ${PYTHON_EXECUTABLE} benchmarks/benchmark.py ${NAME}seq
 
 ## benchmark-parallel: Run benchmarks for parallel execution, 'NAME' variable can be provided
 .PHONY: benchmark-parallel
-benchmark-parallel: activate
+benchmark-parallel:
 		@[ "${NAME}" ] || export NAME=comp
-		python benchmarks/benchmark.py ${NAME}_par
+		${PYTHON_EXECUTABLE} benchmarks/benchmark.py ${NAME}par
 
 ## test: Launch all the test.
 .PHONY: test
-test: activate
-	pytest tests
+test:
+	${PYTEST_EXECUTABLE} tests
