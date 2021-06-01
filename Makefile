@@ -4,6 +4,8 @@ PROJECT = pdist_aggregation
 VENV_PATH=`conda info --base`/envs/${PROJECT}
 PYTHON_EXECUTABLE=${VENV_PATH}/bin/python
 PYTEST_EXECUTABLE=${VENV_PATH}/bin/pytest
+JUPYTER_EXECUTABLE=${VENV_PATH}/bin/jupyter
+COMMIT=`git rev-parse --short HEAD`
 
 .DEFAULT_GOAL := all
 
@@ -25,14 +27,18 @@ install:
 # Uses taskset to cap to a cpu solely
 .PHONY: benchmark-sequential
 benchmark-sequential:
-		@[ "${NAME}" ] || export NAME=comp
+		@[ "${NAME}" ] || export NAME=${COMMIT}
 		taskset -c 0 ${PYTHON_EXECUTABLE} benchmarks/benchmark.py ${NAME}seq
 
 ## benchmark-parallel: Run benchmarks for parallel execution, 'NAME' variable can be provided
 .PHONY: benchmark-parallel
 benchmark-parallel:
-		@[ "${NAME}" ] || export NAME=comp
+		@[ "${NAME}" ] || export NAME=${COMMIT}
 		${PYTHON_EXECUTABLE} benchmarks/benchmark.py ${NAME}par
+
+.PHONY: notebook
+notebook:
+		NAME=${COMMIT} ${JUPYTER_EXECUTABLE} nbconvert --to html --execute --output benchmarks/results/index.html visualization.ipynb
 
 ## test: Launch all the test.
 .PHONY: test

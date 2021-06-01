@@ -108,6 +108,13 @@ def benchmark(config, results_folder, bench_name):
 
     env_specs_file = f"{results_folder}/{bench_name}.json"
 
+    # TODO: This is ugly, but I haven't found something better.
+    commit = (
+        str(subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]))
+        .replace("b'", "")
+        .replace("\\n'", "")
+    )
+
     env_specs = dict(
         threadpool_info=threadpoolctl.threadpool_info(),
         commit=commit,
@@ -278,20 +285,14 @@ def report(results_folder, bench_name):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("benchmark")
 
-    parser.add_argument("bench_name_suffix")
+    parser.add_argument("bench_name")
 
     args = parser.parse_args()
+
+    bench_name = args.bench_name
     with open("benchmarks/config.yml", "r") as f:
         config = yaml.full_load(f)
 
-    # TODO: This is ugly, but I haven't found something better.
-    commit = (
-        str(subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]))
-        .replace("b'", "")
-        .replace("\\n'", "")
-    )
-
-    bench_name = f"{commit}_{args.bench_name_suffix}"
     results_folder = f"benchmarks/results/{bench_name}"
     os.makedirs(results_folder, exist_ok=True)
 
