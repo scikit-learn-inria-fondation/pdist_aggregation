@@ -13,6 +13,7 @@ estimators:
     chunk: True
 
 n_trials: 5
+return_distance: True
 
 datasets:
   # Motives: a few query point < 256 (observed robust chunk size)

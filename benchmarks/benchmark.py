@@ -103,6 +103,7 @@ def benchmark(config, results_folder, bench_name):
     estimators = config["estimators"]
 
     n_trials = config.get("n_trials", 3)
+    return_distance = config.get("return_distance", False)
     one_GiB = 1e9
     benchmarks = pd.DataFrame()
 
@@ -150,7 +151,7 @@ def benchmark(config, results_folder, bench_name):
                             X_train
                         )
 
-                        knn_kwargs = {"X": X_test, "return_distance": False}
+                        knn_kwargs = {"X": X_test, "return_distance": return_distance}
                         if chunk:
                             knn_kwargs["chunk_size"] = chunk_size
 
