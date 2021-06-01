@@ -176,9 +176,7 @@ def benchmark(config, results_folder, bench_name):
 
                         # Parallel_knn returns n_chunks run in parallel
                         # We report it in the benchmarks results
-                        n_parallel_chunks = (
-                            knn_res[1] if isinstance(knn_res, tuple) else np.nan
-                        )
+                        n_parallel_chunks = (knn_res[-1])
 
                         structs_sizes = datastructures_sizes(
                             n=chunk_size,
