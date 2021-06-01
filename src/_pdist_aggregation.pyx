@@ -497,8 +497,7 @@ def parallel_knn(
     str strategy = "auto",
     bint return_distance = False,
 ):
-    # TODO: we could use uint32 here, working up to 4,294,967,295 indices
-    int_dtype = np.int32 if integral is int else np.int64
+    int_dtype = np.intp
     float_dtype = np.float32 if floating is float else np.float64
     cdef:
         integral[:, ::1] knn_indices = np.full((X_test.shape[0], k), 0,
