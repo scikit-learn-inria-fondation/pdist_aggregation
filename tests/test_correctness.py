@@ -10,14 +10,14 @@ from pdist_aggregation import parallel_knn
 @pytest.mark.parametrize("ratio_train_test", [10, 2, 1, 0.5])
 @pytest.mark.parametrize("n_neighbors", [1, 10, 100, 1000])
 @pytest.mark.parametrize("chunk_size", [2 ** i for i in range(9, 13)])
-@pytest.mark.parametrize("use_chunk_on_train", [True, False])
+@pytest.mark.parametrize("strategy", ["auto", "chunk_on_train", "chunk_on_test"])
 def test_correctness(
     n,
     d,
     ratio_train_test,
     n_neighbors,
     chunk_size,
-    use_chunk_on_train,
+    strategy,
     dtype=np.float64,
 ):
     if n < n_neighbors:
@@ -35,13 +35,15 @@ def test_correctness(
     neigh = NearestNeighbors(n_neighbors=n_neighbors, algorithm="brute")
     neigh.fit(X_train)
 
-    knn_sk = neigh.kneighbors(X_test, return_distance=False)
-    knn, _ = parallel_knn(
+    sk_knn_distances, sk_knn_indices = neigh.kneighbors(X_test, return_distance=True)
+    (new_knn_distances, new_knn_indices), _ = parallel_knn(
         X_train,
         X_test,
         k=n_neighbors,
         chunk_size=chunk_size,
-        use_chunk_on_train=use_chunk_on_train,
+        strategy=strategy,
+        return_distance=True,
     )
 
-    np.testing.assert_array_equal(knn, knn_sk)
+    np.testing.assert_almost_equal(new_knn_distances, sk_knn_distances)
+    np.testing.assert_array_equal(new_knn_indices, sk_knn_indices)

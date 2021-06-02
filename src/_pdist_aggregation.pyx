@@ -447,6 +447,46 @@ cdef int _parallel_knn_on_X_train(
     # end: for X_test_chunk_idx
     return X_train_n_chunks
 
+cdef inline floating _euclidean_dist(
+    const floating[:, ::1] X,
+    const floating[:, ::1] Y,
+    integral i,
+    integral j,
+) nogil:
+    cdef:
+        floating dist = 0
+        integral k
+        integral upper_unrolled_idx = (X.shape[1] // 4) * 4
+
+    # Unrolling loop to potentially help with vectorisation?
+    for k in range(0, upper_unrolled_idx, 4):
+        dist += (X[i, k] - Y[j, k]) * (X[i, k] - Y[j, k])
+        dist += (X[i, k + 1] - Y[j, k + 1]) * (X[i, k + 1] - Y[j, k + 1])
+        dist += (X[i, k + 2] - Y[j, k + 2]) * (X[i, k + 2] - Y[j, k + 2])
+        dist += (X[i, k + 3] - Y[j, k + 3]) * (X[i, k + 3] - Y[j, k + 3])
+
+    for k in range(upper_unrolled_idx, X.shape[1]):
+        dist += (X[i, k] - Y[j, k]) * (X[i, k] - Y[j, k])
+
+    return sqrt(dist)
+
+cdef int _compute_exact_distances(
+    const floating[:, ::1] X_train,      # IN
+    const floating[:, ::1] X_test,       # IN
+    const integral[:, ::1] knn_indices,  # IN
+    integral effective_n_threads,
+    floating[:, ::1] knn_distances,      # OUT
+) nogil except -1:
+    cdef:
+        integral i, k
+
+    for i in prange(X_test.shape[0], schedule='static',
+                    nogil=True, num_threads=effective_n_threads):
+        for k in range(knn_indices.shape[1]):
+            knn_distances[i, k] = _euclidean_dist(X_test, X_train,
+                                                  i, knn_indices[i, k])
+
+
 # Python interface
 
 def parallel_knn(
@@ -454,31 +494,47 @@ def parallel_knn(
     const floating[:, ::1] X_test,
     integral k,
     integral chunk_size = CHUNK_SIZE,
-    bint use_chunk_on_train = True,
+    str strategy = "auto",
+    bint return_distance = False,
 ):
-    # TODO: we could use uint32 here, working up to 4,294,967,295 indices
-    int_dtype = np.int32 if integral is int else np.int64
+    int_dtype = np.intp
     float_dtype = np.float32 if floating is float else np.float64
     cdef:
         integral[:, ::1] knn_indices = np.full((X_test.shape[0], k), 0,
                                                dtype=int_dtype)
-        floating[:, ::1] knn_red_distances = np.full((X_test.shape[0], k),
-                                                     FLOAT_INF,
-                                                     dtype=float_dtype)
+        floating[:, ::1] knn_distances = np.full((X_test.shape[0], k),
+                                                  FLOAT_INF,
+                                                  dtype=float_dtype)
         floating[::1] X_train_sq_norms = np.einsum('ij,ij->i', X_train, X_train)
         integral effective_n_threads = _openmp_effective_n_threads()
 
-    if use_chunk_on_train:
+    if strategy == 'auto':
+        if 4 * chunk_size * effective_n_threads < X_test.shape[0]:
+            strategy = 'chunk_on_test'
+        else:
+            strategy = 'chunk_on_train'
+
+    if strategy == 'chunk_on_train':
         n_parallel_chunks = _parallel_knn_on_X_train(
             X_train, X_test, X_train_sq_norms,
             chunk_size, effective_n_threads,
-            knn_indices, knn_red_distances
+            knn_indices, knn_distances
         )
-    else:
+    elif strategy == 'chunk_on_test':
         n_parallel_chunks = _parallel_knn_on_X_test(
             X_train, X_test, X_train_sq_norms,
             chunk_size, effective_n_threads,
-            knn_indices, knn_red_distances
+            knn_indices, knn_distances
         )
+    else:
+        raise RuntimeError(f"strategy '{strategy}' not supported.")
+
+    if return_distance:
+        # We need to recompute distances because we relied on reduced distances
+        # using _gemm, which are missing a term for squarred norms and which are
+        # not the most precise (catastrophic cancellation might have happened).
+        _compute_exact_distances(X_train, X_test, knn_indices,
+                                 effective_n_threads, knn_distances)
+        return (np.asarray(knn_distances), np.asarray(knn_indices)), n_parallel_chunks
 
     return np.asarray(knn_indices), n_parallel_chunks

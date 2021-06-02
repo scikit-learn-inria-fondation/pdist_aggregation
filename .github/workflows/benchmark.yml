@@ -47,11 +47,11 @@ jobs:
           pytest tests
 
       - name: Run benchmark suite
-        run: python benchmarks/benchmark.py
+        run: make benchmark-parallel
 
       - name: Convert notebook to html
         run: |
-          jupyter nbconvert --to html --execute --output benchmarks/results/index.html visualization.ipynb
+          make notebook
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v2

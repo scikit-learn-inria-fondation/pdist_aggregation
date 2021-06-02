@@ -1,4 +1,5 @@
 import argparse
+import glob
 import importlib
 import json
 import os
@@ -8,9 +9,15 @@ from pprint import pprint
 
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import threadpoolctl
 import yaml
+from matplotlib import pyplot as plt
 from memory_profiler import memory_usage
+from sklearn import set_config
+
+# Be gentle with eyes
+plt.rcParams["figure.dpi"] = 200
 
 
 def get_cache_info():
@@ -89,24 +96,18 @@ def datastructures_sizes(
     return datastructures_size
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser("benchmark")
-
-    parser.add_argument("prefix")
-
-    args = parser.parse_args()
-
-    with open("benchmarks/config.yml", "r") as f:
-        config = yaml.full_load(f)
-
+def benchmark(config, results_folder, bench_name):
     datasets = config["datasets"]
     chunk_sizes = config["chunk_size"]
     n_neighbors = config["n_neighbors"]
     estimators = config["estimators"]
 
     n_trials = config.get("n_trials", 3)
+    return_distance = config.get("return_distance", False)
     one_GiB = 1e9
     benchmarks = pd.DataFrame()
+
+    env_specs_file = f"{results_folder}/{bench_name}.json"
 
     # TODO: This is ugly, but I haven't found something better.
     commit = (
@@ -115,22 +116,19 @@ if __name__ == "__main__":
         .replace("\\n'", "")
     )
 
-    BENCH_NAME = f"{args.prefix}_{commit}"
-    RESULTS_FOLDER = f"benchmarks/results/{BENCH_NAME}"
-    RESULTS_FILE = f"{RESULTS_FOLDER}/{BENCH_NAME}.csv"
-    ENV_SPECS_FILE = f"{RESULTS_FOLDER}/{BENCH_NAME}.json"
-
-    os.makedirs(RESULTS_FOLDER, exist_ok=True)
-
     env_specs = dict(
         threadpool_info=threadpoolctl.threadpool_info(),
         commit=commit,
-        prefix=args.prefix,
         cache_info=get_cache_info(),
         config=config,
     )
 
-    with open(ENV_SPECS_FILE, "w") as outfile:
+    # We explicitly remove checks on inputs (defined in sklearn, but also
+    # used by daal4py and the proposed implementation) as we solely want
+    # to compare the implementations.
+    set_config(assume_finite=True)
+
+    with open(env_specs_file, "w") as outfile:
         json.dump(env_specs, outfile)
 
     for dataset in datasets:
@@ -153,7 +151,7 @@ if __name__ == "__main__":
                             X_train
                         )
 
-                        knn_kwargs = {"X": X_test, "return_distance": False}
+                        knn_kwargs = {"X": X_test, "return_distance": return_distance}
                         if chunk:
                             knn_kwargs["chunk_size"] = chunk_size
 
@@ -178,9 +176,7 @@ if __name__ == "__main__":
 
                         # Parallel_knn returns n_chunks run in parallel
                         # We report it in the benchmarks results
-                        n_parallel_chunks = (
-                            knn_res[1] if isinstance(knn_res, tuple) else np.nan
-                        )
+                        n_parallel_chunks = (knn_res[-1])
 
                         structs_sizes = datastructures_sizes(
                             n=chunk_size,
@@ -211,13 +207,98 @@ if __name__ == "__main__":
                         print("---")
 
                         benchmarks.to_csv(
-                            RESULTS_FILE,
+                            f"{results_folder}/{bench_name}.csv",
                             mode="w+",
                             index=False,
                         )
 
-    # Overidding again now that all the dyn. lib. have been loaded
+    # Overriding again now that all the dyn. lib. have been loaded
     env_specs["threadpool_info"] = threadpoolctl.threadpool_info()
 
-    with open(ENV_SPECS_FILE, "w") as outfile:
+    with open(env_specs_file, "w") as outfile:
         json.dump(env_specs, outfile)
+
+
+def report(results_folder, bench_name):
+    df = pd.read_csv(glob.glob(f"{results_folder}/*.csv")[0])
+    with open(glob.glob(f"{results_folder}/*.json")[0], "r") as json_file:
+        env_specs = json.load(json_file)
+
+    cols = [
+        "n_samples_train",
+        "n_samples_test",
+        "n_features",
+        "n_neighbors",
+        "chunk_size",
+    ]
+
+    df[cols] = df[cols].astype(np.uint32)
+
+    # We need string for grouping
+    df["chunk_info"] = df.chunk_size.apply(str)
+    df_grouped = df.groupby(
+        ["n_samples_train", "n_samples_test", "n_features", "n_neighbors"]
+    )
+
+    for i, (vals, df) in enumerate(df_grouped):
+        # 16:9 ratio
+        fig = plt.figure(figsize=(24, 13.5))
+        ax = plt.gca()
+        splot = sns.barplot(
+            y="chunk_info", x="throughput", hue="implementation", data=df, ax=ax
+        )
+        _ = ax.set_xlabel("Throughput (in GB/s)")
+        _ = ax.set_ylabel("Chunk size (number of vectors)")
+        _ = ax.tick_params(labelrotation=45)
+
+        # Adding the numerical values of "x" to bar
+        for p in splot.patches:
+            _ = splot.annotate(
+                f"{p.get_width():.4e}",
+                (p.get_width(), p.get_y() + p.get_height() / 2),
+                ha="center",
+                va="center",
+                size=10,
+                xytext=(0, -12),
+                textcoords="offset points",
+            )
+
+        title = (
+            f"NearestNeighbors@{env_specs['commit']} - "
+            f"Euclidean Distance, dtype=np.float64, {df.trial.max() + 1} trials - Bench. Name: {bench_name}\n"
+        )
+        title += (
+            "n_samples_train=%s - n_samples_test=%s - n_features=%s - n_neighbors=%s"
+            % vals
+        )
+        _ = fig.suptitle(title, fontsize=16)
+        plt.savefig(f"{results_folder}/{bench_name}_{i}.pdf", bbox_inches="tight")
+
+    # Unifying pdf files into one
+    pdf_files = sorted(glob.glob(f"{results_folder}/{bench_name}*.pdf"))
+    subprocess.check_output(
+        ["pdfunite", *pdf_files, f"{results_folder}/{bench_name}.pdf"]
+    )
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser("benchmark")
+
+    parser.add_argument("bench_name")
+
+    args = parser.parse_args()
+
+    bench_name = args.bench_name
+    with open("benchmarks/config.yml", "r") as f:
+        config = yaml.full_load(f)
+
+    results_folder = f"benchmarks/results/{bench_name}"
+    os.makedirs(results_folder, exist_ok=True)
+
+    print(f"Benchmarking {bench_name}")
+    benchmark(config, results_folder, bench_name)
+    print(f"Benchmark results wrote in {results_folder}")
+
+    print(f"Reporting results for {bench_name}")
+    report(results_folder, bench_name)
+    print(f"Reporting results wrote in {results_folder}")

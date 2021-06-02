@@ -1,38 +1,63 @@
 estimators:
-  - name: sklearn
-    estimator: sklearn.neighbors.NearestNeighbors
-    chunk: False
   - name: daal4py
     estimator: daal4py.sklearn.neighbors.NearestNeighbors
     chunk: False
-  - name: "Parallel on X_train"
-    estimator: nn.NearestNeighborsParrallelXtrain
+  - name: "auto"
+    estimator: nn.NearestNeighborsParallelAuto
     chunk: True
-  - name: "Parallel on X_test"
-    estimator: nn.NearestNeighborsParrallelXtest
+  - name: "chunk_on_train"
+    estimator: nn.NearestNeighborsParallelXtrain
+    chunk: True
+  - name: "chunk_on_test"
+    estimator: nn.NearestNeighborsParallelXtest
     chunk: True
 
-n_trials: 1
+n_trials: 5
+return_distance: True
 
 datasets:
   # Motives: a few query point < 256 (observed robust chunk size)
-  - n_samples_train: 1e6
+  - n_samples_train: 1e5
+    n_samples_test: 1
+    n_features: 50
+  - n_samples_train: 1e5
+    n_samples_test: 128
+    n_features: 50
+  - n_samples_train: 1e5
+    n_samples_test: 256
+    n_features: 50
+  
+  - n_samples_train: 1e5
     n_samples_test: 1
     n_features: 100
-  - n_samples_train: 1e6
-    n_samples_test: 50
+  - n_samples_train: 1e5
+    n_samples_test: 128
     n_features: 100
-  - n_samples_train: 1e6
+  - n_samples_train: 1e5
     n_samples_test: 256
     n_features: 100
 
+  - n_samples_train: 1e5
+    n_samples_test: 1
+    n_features: 500
+  - n_samples_train: 1e5
+    n_samples_test: 128
+    n_features: 500
+  - n_samples_train: 1e5
+    n_samples_test: 256
+    n_features: 500
+
   # Motives: Intermediate datasets
+
+  # X_train taller
   - n_samples_train: 1e5
     n_samples_test: 1e3
     n_features: 100
   - n_samples_train: 1e5
     n_samples_test: 1e3
     n_features: 500
+
+  # X_test taller
   - n_samples_train: 1e3
     n_samples_test: 1e5
     n_features: 100
@@ -50,4 +75,6 @@ chunk_size: # [2 ** i for i in range(6, 13)]
   - 4096
 
 n_neighbors:
+  - 1
   - 10
+  - 100
