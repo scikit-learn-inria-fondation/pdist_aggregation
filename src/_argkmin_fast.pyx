@@ -190,10 +190,10 @@ cdef int _simultaneous_sort(
 ### argkmin helpers
 
 cdef void _k_argkmin_on_chunk(
-    const floating[:, ::1] X_c,            # IN
-    const floating[:, ::1] Y_c,            # IN
-    const floating[::1] Y_sq_norms,        # IN
-    const floating *dist_middle_terms,     # IN
+    floating[:, ::1] X_c,                  # IN
+    floating[:, ::1] Y_c,                  # IN
+    floating[::1] Y_sq_norms,              # IN
+    floating *dist_middle_terms,           # IN
     floating *heaps_red_distances,         # IN/OUT
     integral *heaps_indices,               # IN/OUT
     integral k,                            # IN
@@ -234,9 +234,9 @@ cdef void _k_argkmin_on_chunk(
 
 
 cdef int _argkmin_on_X(
-    const floating[:, ::1] X,             # IN
-    const floating[:, ::1] Y,             # IN
-    const floating[::1] Y_sq_norms,       # IN
+    floating[:, ::1] X,                   # IN
+    floating[:, ::1] Y,                   # IN
+    floating[::1] Y_sq_norms,             # IN
     integral chunk_size,                  # IN
     integral effective_n_threads,         # IN
     integral[:, ::1] knn_indices,         # OUT
@@ -331,9 +331,9 @@ cdef int _argkmin_on_X(
 
 
 cdef int _argkmin_on_Y(
-    const floating[:, ::1] X,             # IN
-    const floating[:, ::1] Y,             # IN
-    const floating[::1] Y_sq_norms,       # IN
+    floating[:, ::1] X,                   # IN
+    floating[:, ::1] Y,                   # IN
+    floating[::1] Y_sq_norms,             # IN
     integral chunk_size,                  # IN
     integral effective_n_threads,         # IN
     integral[:, ::1] knn_indices,         # OUT
@@ -448,8 +448,8 @@ cdef int _argkmin_on_Y(
     return Y_n_chunks
 
 cdef inline floating _euclidean_dist(
-    const floating[:, ::1] X,
-    const floating[:, ::1] Y,
+    floating[:, ::1] X,
+    floating[:, ::1] Y,
     integral i,
     integral j,
 ) nogil:
@@ -471,10 +471,10 @@ cdef inline floating _euclidean_dist(
     return sqrt(dist)
 
 cdef int _compute_exact_distances(
-    const floating[:, ::1] X,            # IN
-    const floating[:, ::1] Y,            # IN
-    const integral[:, ::1] knn_indices,  # IN
-    integral effective_n_threads,
+    floating[:, ::1] X,                  # IN
+    floating[:, ::1] Y,                  # IN
+    integral[:, ::1] knn_indices,        # IN
+    integral effective_n_threads,        # IN
     floating[:, ::1] knn_distances,      # OUT
 ) nogil except -1:
     cdef:
@@ -490,8 +490,8 @@ cdef int _compute_exact_distances(
 # Python interface
 
 def _argkmin(
-    const floating[:, ::1] X,
-    const floating[:, ::1] Y,
+    floating[:, ::1] X,
+    floating[:, ::1] Y,
     integral k,
     integral chunk_size = CHUNK_SIZE,
     str strategy = "auto",
