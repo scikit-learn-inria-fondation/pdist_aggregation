@@ -187,91 +187,91 @@ cdef int _simultaneous_sort(
                                size - pivot_idx - 1)
     return 0
 
-### K-NN helpers
+### argkmin helpers
 
-cdef void _k_closest_on_chunk(
-    const floating[:, ::1] X_train_c,      # IN
-    const floating[:, ::1] X_test_c,       # IN
-    const floating[::1] X_train_sq_norms,  # IN
+cdef void _k_argkmin_on_chunk(
+    const floating[:, ::1] X_c,            # IN
+    const floating[:, ::1] Y_c,            # IN
+    const floating[::1] Y_sq_norms,        # IN
     const floating *dist_middle_terms,     # IN
     floating *heaps_red_distances,         # IN/OUT
     integral *heaps_indices,               # IN/OUT
     integral k,                            # IN
-    # ID of the first element of X_train_c
-    integral X_train_idx_offset,
+    # ID of the first element of Y_c
+    integral Y_idx_offset,
 ) nogil:
     cdef:
         integral i, j
     # Instead of computing the full pairwise squared distances matrix,
-    # ||X_test_c - X_train_c||² = ||X_test_c||² - 2 X_test_c.X_train_c^T + ||X_train_c||²,
-    # we only need to store the - 2 X_test_c.X_train_c^T + ||X_train_c||²
-    # term since the argmin for a given sample X_test_c^{i} does not depend on
-    # ||X_test_c^{i}||²
+    # ||X_c - Y_c||² = ||X_c||² - 2 X_c.Y_c^T + ||Y_c||²,
+    # we only need to store the - 2 X_c.Y_c^T + ||Y_c||²
+    # term since the argmin for a given sample X_c^{i} does not depend on
+    # ||X_c^{i}||²
 
     # Careful: LDA, LDB and LDC are given for F-ordered arrays.
     # Here, we use their counterpart values as indicated in the documentation.
     # See the documentation of parameters here:
     # https://www.netlib.org/lapack/explore-html/db/dc9/group__single__blas__level3_gafe51bacb54592ff5de056acabd83c260.html
     #
-    # dist_middle_terms = -2 * X_test_c.dot(X_train_c.T)
+    # dist_middle_terms = -2 * X_c.dot(Y_c.T)
     _gemm(RowMajor, NoTrans, Trans,
-          X_test_c.shape[0], X_train_c.shape[0], X_test_c.shape[1],
+          X_c.shape[0], Y_c.shape[0], X_c.shape[1],
           -2.0,
-          &X_test_c[0, 0], X_test_c.shape[1],
-          &X_train_c[0, 0], X_test_c.shape[1], 0.0,
-          dist_middle_terms, X_train_c.shape[0])
+          &X_c[0, 0], X_c.shape[1],
+          &Y_c[0, 0], X_c.shape[1], 0.0,
+          dist_middle_terms, Y_c.shape[0])
 
     # Computing argmins here
-    for i in range(X_test_c.shape[0]):
-        for j in range(X_train_c.shape[0]):
+    for i in range(X_c.shape[0]):
+        for j in range(Y_c.shape[0]):
             _push(heaps_red_distances + i * k,
                   heaps_indices + i * k,
                   k,
-                  # reduced distance: - 2 X_test_c_i.X_train_c_j^T + ||X_train_c_j||²
-                  dist_middle_terms[i * X_train_c.shape[0] + j] + X_train_sq_norms[j],
-                  j + X_train_idx_offset)
+                  # reduced distance: - 2 X_c_i.Y_c_j^T + ||Y_c_j||²
+                  dist_middle_terms[i * Y_c.shape[0] + j] + Y_sq_norms[j],
+                  j + Y_idx_offset)
 
 
 
-cdef int _parallel_knn_on_X_test(
-    const floating[:, ::1] X_train,       # IN
-    const floating[:, ::1] X_test,        # IN
-    const floating[::1] X_train_sq_norms, # IN
-    integral chunk_size,
-    integral effective_n_threads,
+cdef int _argkmin_on_X(
+    const floating[:, ::1] X,             # IN
+    const floating[:, ::1] Y,             # IN
+    const floating[::1] Y_sq_norms,       # IN
+    integral chunk_size,                  # IN
+    integral effective_n_threads,         # IN
     integral[:, ::1] knn_indices,         # OUT
     floating[:, ::1] knn_red_distances,   # OUT
 ) nogil except -1:
     cdef:
         integral k = knn_indices.shape[1]
-        integral d = X_test.shape[1]
+        integral d = X.shape[1]
         integral sf = sizeof(floating)
         integral si = sizeof(integral)
         integral n_samples_chunk = max(MIN_CHUNK_SAMPLES, chunk_size)
 
-        integral n_train = X_train.shape[0]
-        integral X_train_n_samples_chunk = min(n_train, n_samples_chunk)
-        integral X_train_n_full_chunks = n_train / X_train_n_samples_chunk
-        integral X_train_n_samples_rem = n_train % X_train_n_samples_chunk
+        integral n_train = Y.shape[0]
+        integral Y_n_samples_chunk = min(n_train, n_samples_chunk)
+        integral Y_n_full_chunks = n_train / Y_n_samples_chunk
+        integral Y_n_samples_rem = n_train % Y_n_samples_chunk
 
-        integral n_test = X_test.shape[0]
-        integral X_test_n_samples_chunk = min(n_test, n_samples_chunk)
-        integral X_test_n_full_chunks = n_test // X_test_n_samples_chunk
-        integral X_test_n_samples_rem = n_test % X_test_n_samples_chunk
+        integral n_test = X.shape[0]
+        integral X_n_samples_chunk = min(n_test, n_samples_chunk)
+        integral X_n_full_chunks = n_test // X_n_samples_chunk
+        integral X_n_samples_rem = n_test % X_n_samples_chunk
 
         # Counting remainder chunk in total number of chunks
-        integral X_train_n_chunks = X_train_n_full_chunks + (
-            n_train != (X_train_n_full_chunks * X_train_n_samples_chunk)
+        integral Y_n_chunks = Y_n_full_chunks + (
+            n_train != (Y_n_full_chunks * Y_n_samples_chunk)
         )
 
-        integral X_test_n_chunks = X_test_n_full_chunks + (
-            n_test != (X_test_n_full_chunks * X_test_n_samples_chunk)
+        integral X_n_chunks = X_n_full_chunks + (
+            n_test != (X_n_full_chunks * X_n_samples_chunk)
         )
 
-        integral num_threads = min(X_train_n_chunks, effective_n_threads)
+        integral num_threads = min(Y_n_chunks, effective_n_threads)
 
-        integral X_train_start, X_train_end, X_test_start, X_test_end
-        integral X_test_chunk_idx, X_train_chunk_idx, idx, jdx
+        integral Y_start, Y_end, X_start, X_end
+        integral X_chunk_idx, Y_chunk_idx, idx, jdx
 
         floating *dist_middle_terms_chunks
         floating *heaps_red_distances_chunks
@@ -280,150 +280,150 @@ cdef int _parallel_knn_on_X_test(
     with nogil, parallel(num_threads=num_threads):
         # Thread local buffers
 
-        # Temporary buffer for the -2 * X_c.dot(X_train_c.T) term
-        dist_middle_terms_chunks = <floating*> malloc(X_train_n_samples_chunk * X_test_n_samples_chunk * sf)
-        heaps_red_distances_chunks = <floating*> malloc(X_test_n_samples_chunk * k * sf)
+        # Temporary buffer for the -2 * X_c.dot(Y_c.T) term
+        dist_middle_terms_chunks = <floating*> malloc(Y_n_samples_chunk * X_n_samples_chunk * sf)
+        heaps_red_distances_chunks = <floating*> malloc(X_n_samples_chunk * k * sf)
 
-        for X_test_chunk_idx in prange(X_test_n_chunks, schedule='static'):
+        for X_chunk_idx in prange(X_n_chunks, schedule='static'):
             # We reset the heap between X chunks (memset isn't suitable here)
-            for idx in range(X_test_n_samples_chunk * k):
+            for idx in range(X_n_samples_chunk * k):
                 heaps_red_distances_chunks[idx] = FLOAT_INF
 
-            X_test_start = X_test_chunk_idx * X_test_n_samples_chunk
-            if X_test_chunk_idx == X_test_n_chunks - 1 and X_test_n_samples_rem > 0:
-                X_test_end = X_test_start + X_test_n_samples_rem
+            X_start = X_chunk_idx * X_n_samples_chunk
+            if X_chunk_idx == X_n_chunks - 1 and X_n_samples_rem > 0:
+                X_end = X_start + X_n_samples_rem
             else:
-                X_test_end = X_test_start + X_test_n_samples_chunk
+                X_end = X_start + X_n_samples_chunk
 
-            for X_train_chunk_idx in range(X_train_n_chunks):
-                X_train_start = X_train_chunk_idx * X_train_n_samples_chunk
-                if X_train_chunk_idx == X_train_n_chunks - 1 and X_train_n_samples_rem > 0:
-                    X_train_end = X_train_start + X_train_n_samples_rem
+            for Y_chunk_idx in range(Y_n_chunks):
+                Y_start = Y_chunk_idx * Y_n_samples_chunk
+                if Y_chunk_idx == Y_n_chunks - 1 and Y_n_samples_rem > 0:
+                    Y_end = Y_start + Y_n_samples_rem
                 else:
-                    X_train_end = X_train_start + X_train_n_samples_chunk
+                    Y_end = Y_start + Y_n_samples_chunk
 
-                _k_closest_on_chunk(
-                    X_train[X_train_start:X_train_end, :],
-                    X_test[X_test_start:X_test_end, :],
-                    X_train_sq_norms[X_train_start:X_train_end],
+                _k_argkmin_on_chunk(
+                    X[X_start:X_end, :],
+                    Y[Y_start:Y_end, :],
+                    Y_sq_norms[Y_start:Y_end],
                     dist_middle_terms_chunks,
                     heaps_red_distances_chunks,
-                    &knn_indices[X_test_start, 0],
+                    &knn_indices[X_start, 0],
                     k,
-                    X_train_start
+                    Y_start
                 )
 
-            # Getting the indices of the k-closest points in
+            # Getting the indices of the k-argkmin points in
             # the sorted order
-            for idx in range(X_test_end - X_test_start):
+            for idx in range(X_end - X_start):
                 _simultaneous_sort(
                     heaps_red_distances_chunks + idx * k,
-                    &knn_indices[X_test_start + idx, 0],
+                    &knn_indices[X_start + idx, 0],
                     k
                 )
 
-        # end: for X_test_chunk_idx
+        # end: for X_chunk_idx
         free(dist_middle_terms_chunks)
         free(heaps_red_distances_chunks)
 
     # end: with nogil, parallel
-    return X_test_n_chunks
+    return X_n_chunks
 
 
-cdef int _parallel_knn_on_X_train(
-    const floating[:, ::1] X_train,       # IN
-    const floating[:, ::1] X_test,        # IN
-    const floating[::1] X_train_sq_norms, # IN
-    integral chunk_size,
-    integral effective_n_threads,
+cdef int _argkmin_on_Y(
+    const floating[:, ::1] X,             # IN
+    const floating[:, ::1] Y,             # IN
+    const floating[::1] Y_sq_norms,       # IN
+    integral chunk_size,                  # IN
+    integral effective_n_threads,         # IN
     integral[:, ::1] knn_indices,         # OUT
     floating[:, ::1] knn_red_distances,   # OUT
 ) nogil except -1:
     cdef:
         integral k = knn_indices.shape[1]
-        integral d = X_test.shape[1]
+        integral d = X.shape[1]
         integral sf = sizeof(floating)
         integral si = sizeof(integral)
         integral n_samples_chunk = max(MIN_CHUNK_SAMPLES, chunk_size)
 
-        integral n_train = X_train.shape[0]
-        integral X_train_n_samples_chunk = min(n_train, n_samples_chunk)
-        integral X_train_n_full_chunks = n_train / X_train_n_samples_chunk
-        integral X_train_n_samples_rem = n_train % X_train_n_samples_chunk
+        integral n_train = Y.shape[0]
+        integral Y_n_samples_chunk = min(n_train, n_samples_chunk)
+        integral Y_n_full_chunks = n_train / Y_n_samples_chunk
+        integral Y_n_samples_rem = n_train % Y_n_samples_chunk
 
-        integral n_test = X_test.shape[0]
-        integral X_test_n_samples_chunk = min(n_test, n_samples_chunk)
-        integral X_test_n_full_chunks = n_test // X_test_n_samples_chunk
-        integral X_test_n_samples_rem = n_test % X_test_n_samples_chunk
+        integral n_test = X.shape[0]
+        integral X_n_samples_chunk = min(n_test, n_samples_chunk)
+        integral X_n_full_chunks = n_test // X_n_samples_chunk
+        integral X_n_samples_rem = n_test % X_n_samples_chunk
 
         # Counting remainder chunk in total number of chunks
-        integral X_train_n_chunks = X_train_n_full_chunks + (
-            n_train != (X_train_n_full_chunks * X_train_n_samples_chunk)
+        integral Y_n_chunks = Y_n_full_chunks + (
+            n_train != (Y_n_full_chunks * Y_n_samples_chunk)
         )
 
-        integral X_test_n_chunks = X_test_n_full_chunks + (
-            n_test != (X_test_n_full_chunks * X_test_n_samples_chunk)
+        integral X_n_chunks = X_n_full_chunks + (
+            n_test != (X_n_full_chunks * X_n_samples_chunk)
         )
 
-        integral num_threads = min(X_train_n_chunks, effective_n_threads)
+        integral num_threads = min(Y_n_chunks, effective_n_threads)
 
-        integral X_train_start, X_train_end, X_test_start, X_test_end
-        integral X_test_chunk_idx, X_train_chunk_idx, idx, jdx
+        integral Y_start, Y_end, X_start, X_end
+        integral X_chunk_idx, Y_chunk_idx, idx, jdx
 
         floating *dist_middle_terms_chunks
         floating *heaps_red_distances_chunks
         integral *heaps_indices_chunks
 
-    for X_test_chunk_idx in range(X_test_n_chunks):
-        X_test_start = X_test_chunk_idx * X_test_n_samples_chunk
-        if X_test_chunk_idx == X_test_n_chunks - 1 and X_test_n_samples_rem > 0:
-            X_test_end = X_test_start + X_test_n_samples_rem
+    for X_chunk_idx in range(X_n_chunks):
+        X_start = X_chunk_idx * X_n_samples_chunk
+        if X_chunk_idx == X_n_chunks - 1 and X_n_samples_rem > 0:
+            X_end = X_start + X_n_samples_rem
         else:
-            X_test_end = X_test_start + X_test_n_samples_chunk
+            X_end = X_start + X_n_samples_chunk
 
         with nogil, parallel(num_threads=num_threads):
             # Thread local buffers
 
-            # Temporary buffer for the -2 * X_test_c.dot(X_train_c.T) term
+            # Temporary buffer for the -2 * X_c.dot(Y_c.T) term
             dist_middle_terms_chunks = <floating*> malloc(
-                X_train_n_samples_chunk * X_test_n_samples_chunk * sf)
+                Y_n_samples_chunk * X_n_samples_chunk * sf)
             heaps_red_distances_chunks = <floating*> malloc(
-                X_test_n_samples_chunk * k * sf)
+                X_n_samples_chunk * k * sf)
             heaps_indices_chunks = <integral*> malloc(
-                X_test_n_samples_chunk * k * sf)
+                X_n_samples_chunk * k * sf)
 
             # Initialising heep (memset isn't suitable here)
-            for idx in range(X_test_n_samples_chunk * k):
+            for idx in range(X_n_samples_chunk * k):
                 heaps_red_distances_chunks[idx] = FLOAT_INF
                 heaps_indices_chunks[idx] = -1
 
-            for X_train_chunk_idx in prange(X_train_n_chunks, schedule='static'):
-                X_train_start = X_train_chunk_idx * X_train_n_samples_chunk
-                if X_train_chunk_idx == X_train_n_chunks - 1 \
-                    and X_train_n_samples_rem > 0:
-                    X_train_end = X_train_start + X_train_n_samples_rem
+            for Y_chunk_idx in prange(Y_n_chunks, schedule='static'):
+                Y_start = Y_chunk_idx * Y_n_samples_chunk
+                if Y_chunk_idx == Y_n_chunks - 1 \
+                    and Y_n_samples_rem > 0:
+                    Y_end = Y_start + Y_n_samples_rem
                 else:
-                    X_train_end = X_train_start + X_train_n_samples_chunk
+                    Y_end = Y_start + Y_n_samples_chunk
 
-                _k_closest_on_chunk(
-                    X_train[X_train_start:X_train_end, :],
-                    X_test[X_test_start:X_test_end, :],
-                    X_train_sq_norms[X_train_start:X_train_end],
+                _k_argkmin_on_chunk(
+                    X[X_start:X_end, :],
+                    Y[Y_start:Y_end, :],
+                    Y_sq_norms[Y_start:Y_end],
                     dist_middle_terms_chunks,
                     heaps_red_distances_chunks,
                     heaps_indices_chunks,
                     k,
-                    X_train_start,
+                    Y_start,
                 )
 
-            # end: for X_train_chunk_idx
+            # end: for Y_chunk_idx
             with gil:
                 # Synchronising with the main heaps
-                for idx in range(X_test_end - X_test_start):
+                for idx in range(X_end - X_start):
                     for jdx in range(k):
                         _push(
-                            &knn_red_distances[X_test_start + idx, 0],
-                            &knn_indices[X_test_start + idx, 0],
+                            &knn_red_distances[X_start + idx, 0],
+                            &knn_indices[X_start + idx, 0],
                             k,
                             heaps_red_distances_chunks[idx * k + jdx],
                             heaps_indices_chunks[idx * k + jdx],
@@ -434,7 +434,7 @@ cdef int _parallel_knn_on_X_train(
             free(heaps_indices_chunks)
 
         # end: with nogil, parallel
-        # Sortting indices of the k-nn for each query vector of X_test
+        # Sortting indices of the k-nn for each query vector of X
         for idx in prange(n_test,schedule='static',
                           nogil=True, num_threads=num_threads):
             _simultaneous_sort(
@@ -444,8 +444,8 @@ cdef int _parallel_knn_on_X_train(
             )
 
         # end: with nogil, parallel
-    # end: for X_test_chunk_idx
-    return X_train_n_chunks
+    # end: for X_chunk_idx
+    return Y_n_chunks
 
 cdef inline floating _euclidean_dist(
     const floating[:, ::1] X,
@@ -471,8 +471,8 @@ cdef inline floating _euclidean_dist(
     return sqrt(dist)
 
 cdef int _compute_exact_distances(
-    const floating[:, ::1] X_train,      # IN
-    const floating[:, ::1] X_test,       # IN
+    const floating[:, ::1] X,            # IN
+    const floating[:, ::1] Y,            # IN
     const integral[:, ::1] knn_indices,  # IN
     integral effective_n_threads,
     floating[:, ::1] knn_distances,      # OUT
@@ -480,18 +480,18 @@ cdef int _compute_exact_distances(
     cdef:
         integral i, k
 
-    for i in prange(X_test.shape[0], schedule='static',
+    for i in prange(X.shape[0], schedule='static',
                     nogil=True, num_threads=effective_n_threads):
         for k in range(knn_indices.shape[1]):
-            knn_distances[i, k] = _euclidean_dist(X_test, X_train,
+            knn_distances[i, k] = _euclidean_dist(X, Y,
                                                   i, knn_indices[i, k])
 
 
 # Python interface
 
-def parallel_knn(
-    const floating[:, ::1] X_train,
-    const floating[:, ::1] X_test,
+def _argkmin(
+    const floating[:, ::1] X,
+    const floating[:, ::1] Y,
     integral k,
     integral chunk_size = CHUNK_SIZE,
     str strategy = "auto",
@@ -500,29 +500,29 @@ def parallel_knn(
     int_dtype = np.intp
     float_dtype = np.float32 if floating is float else np.float64
     cdef:
-        integral[:, ::1] knn_indices = np.full((X_test.shape[0], k), 0,
+        integral[:, ::1] knn_indices = np.full((X.shape[0], k), 0,
                                                dtype=int_dtype)
-        floating[:, ::1] knn_distances = np.full((X_test.shape[0], k),
+        floating[:, ::1] knn_distances = np.full((X.shape[0], k),
                                                   FLOAT_INF,
                                                   dtype=float_dtype)
-        floating[::1] X_train_sq_norms = np.einsum('ij,ij->i', X_train, X_train)
+        floating[::1] Y_sq_norms = np.einsum('ij,ij->i', Y, Y)
         integral effective_n_threads = _openmp_effective_n_threads()
 
     if strategy == 'auto':
-        if 4 * chunk_size * effective_n_threads < X_test.shape[0]:
-            strategy = 'chunk_on_test'
+        if 4 * chunk_size * effective_n_threads < X.shape[0]:
+            strategy = 'chunk_on_X'
         else:
-            strategy = 'chunk_on_train'
+            strategy = 'chunk_on_Y'
 
-    if strategy == 'chunk_on_train':
-        n_parallel_chunks = _parallel_knn_on_X_train(
-            X_train, X_test, X_train_sq_norms,
+    if strategy == 'chunk_on_Y':
+        n_parallel_chunks = _argkmin_on_Y(
+            X, Y, Y_sq_norms,
             chunk_size, effective_n_threads,
             knn_indices, knn_distances
         )
-    elif strategy == 'chunk_on_test':
-        n_parallel_chunks = _parallel_knn_on_X_test(
-            X_train, X_test, X_train_sq_norms,
+    elif strategy == 'chunk_on_X':
+        n_parallel_chunks = _argkmin_on_X(
+            X, Y, Y_sq_norms,
             chunk_size, effective_n_threads,
             knn_indices, knn_distances
         )
@@ -533,7 +533,7 @@ def parallel_knn(
         # We need to recompute distances because we relied on reduced distances
         # using _gemm, which are missing a term for squarred norms and which are
         # not the most precise (catastrophic cancellation might have happened).
-        _compute_exact_distances(X_train, X_test, knn_indices,
+        _compute_exact_distances(X, Y, knn_indices,
                                  effective_n_threads, knn_distances)
         return (np.asarray(knn_distances), np.asarray(knn_indices)), n_parallel_chunks
 

@@ -4,8 +4,8 @@ from setuptools import Extension, setup
 
 extensions = [
     Extension(
-        "pdist_aggregation",
-        sources=["_pdist_aggregation.pyx"],
+        "pairwise_aggregation",
+        sources=["_argkmin_fast.pyx"],
         include_dirs=[numpy.get_include()],
         extra_compile_args=[
             "-fopenmp",
@@ -18,7 +18,7 @@ extensions = [
 ]
 
 setup(
-    name="pdist_aggregation",
+    name="pairwise_aggregation",
     cmdclass={"build_ext": build_ext},
     version="0.1",
     ext_modules=extensions,
