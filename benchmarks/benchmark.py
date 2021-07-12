@@ -160,7 +160,8 @@ def benchmark(config, results_folder, bench_name):
                             f"n_samples_train={ns_train}, "
                             f"n_samples_test={ns_test}, "
                             f"n_features={nf}, "
-                            f"n_neighbors={k}"
+                            f"n_neighbors={k}, "
+                            f"chunk_size={chunk_size}"
                         )
 
                         t0_ = time.perf_counter()

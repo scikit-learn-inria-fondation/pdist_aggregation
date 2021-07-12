@@ -6,7 +6,6 @@ dependencies:
   - compilers
   - jupyter
   - numpy
-  - cython
   - matplotlib
   - seaborn
   - pandas
@@ -18,10 +17,9 @@ dependencies:
   - pytest
   - memory_profiler
   - pip:
-      - --pre
-      - --index-url https://pypi.anaconda.org/scipy-wheels-nightly/simple
-      - scikit-learn
-      # Install pdist_agregation from source
-      - -e ./src
       # Install cython 3 from upstream directly
       - -e git+https://github.com/cython/cython.git#egg=cython
+      # Install fork of scikit-learn containing new implementations
+      - -e git+https://github.com/jjerphan/scikit-learn.git@pairwise_aggregation_cython-radius#egg=scikit-learn
+      # Install pdist_agregation from source
+      - -e ./src

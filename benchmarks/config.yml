@@ -2,17 +2,20 @@ estimators:
   - name: daal4py
     estimator: daal4py.sklearn.neighbors.NearestNeighbors
     chunk: False
-  - name: "auto"
-    estimator: nn.NearestNeighborsParallelAuto
+  - name: "old (parallel_on_Y)"
+    estimator: nn.NearestNeighborsParallelY
     chunk: True
-  - name: "chunk_on_train"
-    estimator: nn.NearestNeighborsParallelXtrain
+  - name: "old (parallel_on_X)"
+    estimator: nn.NearestNeighborsParallelX
     chunk: True
-  - name: "chunk_on_test"
-    estimator: nn.NearestNeighborsParallelXtest
+  - name: "new (parallel_on_Y)"
+    estimator: nn.ArgKminParallelY
+    chunk: True
+  - name: "new (parallel_on_X)"
+    estimator: nn.ArgKminParallelX
     chunk: True
 
-n_trials: 5
+n_trials: 3
 return_distance: True
 
 datasets:
@@ -26,7 +29,7 @@ datasets:
   - n_samples_train: 1e5
     n_samples_test: 256
     n_features: 50
-  
+
   - n_samples_train: 1e5
     n_samples_test: 1
     n_features: 100
@@ -66,13 +69,7 @@ datasets:
     n_features: 500
 
 chunk_size: # [2 ** i for i in range(6, 13)]
-  - 64
-  - 128
   - 256
-  - 512
-  - 1024
-  - 2048
-  - 4096
 
 n_neighbors:
   - 1
