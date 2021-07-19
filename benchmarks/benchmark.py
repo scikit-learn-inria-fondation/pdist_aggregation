@@ -175,19 +175,6 @@ def benchmark(config, results_folder, bench_name):
                         t1_ = time.perf_counter()
                         time_elapsed = round(t1_ - t0_, 5)
 
-                        # Parallel_knn returns n_chunks run in parallel
-                        # We report it in the benchmarks results
-                        n_parallel_chunks = (knn_res[-1])
-
-                        structs_sizes = datastructures_sizes(
-                            n=chunk_size,
-                            d=X_train.shape[1],
-                            k=k,
-                            fdtype=X_train.dtype,
-                            idtype=np.int64,
-                            parallel_on_xtrain="train" in class_name.lower(),
-                        )
-
                         row = dict(
                             trial=trial,
                             implementation=name,
@@ -195,12 +182,10 @@ def benchmark(config, results_folder, bench_name):
                             n_samples_test=ns_test,
                             n_features=nf,
                             chunk_size=chunk_size,
-                            n_parallel_chunks=n_parallel_chunks,
                             n_neighbors=k,
                             max_mem_usage=np.max(mem_usage),
                             time_elapsed=time_elapsed,
                             throughput=bytes_processed_data / time_elapsed / one_GiB,
-                            **structs_sizes,
                         )
 
                         benchmarks = benchmarks.append(row, ignore_index=True)

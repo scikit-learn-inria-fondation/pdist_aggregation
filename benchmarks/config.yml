@@ -9,7 +9,7 @@ estimators:
     estimator: nn.ArgKminParallelAuto
     chunk: True
 
-n_trials: 3
+n_trials: 5
 return_distance: True
 
 datasets:
@@ -62,22 +62,22 @@ datasets:
     n_samples_test: 1e5
     n_features: 500
 
-  # Motives: Big datasets
+  # Motives: Large datasets
 
   # X_train taller
-  - n_samples_train: 1e8
+  - n_samples_train: 1e6
     n_samples_test: 1e4
     n_features: 100
-  - n_samples_train: 1e8
+  - n_samples_train: 1e6
     n_samples_test: 1e4
     n_features: 500
 
   # X_test taller
   - n_samples_train: 1e4
-    n_samples_test: 1e8
+    n_samples_test: 1e6
     n_features: 100
   - n_samples_train: 1e4
-    n_samples_test: 1e8
+    n_samples_test: 1e6
     n_features: 500
 
 chunk_size:
