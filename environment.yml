@@ -20,6 +20,6 @@ dependencies:
       # Install cython 3 from upstream directly
       - -e git+https://github.com/cython/cython.git#egg=cython
       # Install fork of scikit-learn containing new implementations
-      - -e git+https://github.com/jjerphan/scikit-learn.git@pairwise_aggregation_cython-radius#egg=scikit-learn
-      # Install pdist_agregation from source
+      - -e git+https://github.com/jjerphan/scikit-learn.git@pairwise_aggregation_cython#egg=scikit-learn
+      # Install pdist_aggregation from source
       - -e ./src
