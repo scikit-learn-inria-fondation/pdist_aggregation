@@ -22,6 +22,11 @@ setup(
     cmdclass={"build_ext": build_ext},
     version="0.1",
     ext_modules=extensions,
-    install_requires=["setuptools>=18.0", "cython>=0.27.3", "numpy"],
+    install_requires=[
+        "cython>=3",
+        "numpy>=1.20",
+        "setuptools>=18.0",
+        "scikit-learn>=0.24.2",
+    ],
     python_requires=">=3.6",
 )
