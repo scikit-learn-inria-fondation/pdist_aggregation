@@ -1,4 +1,7 @@
 estimators:
+  - name: daal4py
+    estimator: daal4py.sklearn.neighbors.NearestNeighbors
+    chunk: False
   - name: "ArgKmin (parallel_on_Y)"
     estimator: nn.ArgKminParallelY
     chunk: True

@@ -16,7 +16,7 @@ help: Makefile
 
 ## all: Run the main targets
 .PHONY: all
-all: install benchmark-sequential benchmark-parallel
+all: install benchmark-parallel benchmark-sequential
 
 ## install: Install conda env.
 .PHONY: install

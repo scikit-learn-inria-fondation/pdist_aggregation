@@ -1,6 +1,6 @@
 import abc
 
-from sklearn.metrics._parallel_reductions import ArgKmin as _ArgKmin
+from sklearn.metrics._pairwise_distances_reduction import ArgKmin as _ArgKmin
 from sklearn.utils.validation import check_array
 from threadpoolctl import threadpool_limits
 

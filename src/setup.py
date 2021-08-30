@@ -23,7 +23,7 @@ setup(
     version="0.1",
     ext_modules=extensions,
     install_requires=[
-        "cython>=3",
+        "cython",
         "numpy>=1.20",
         "setuptools>=18.0",
         "scikit-learn>=0.24.2",
