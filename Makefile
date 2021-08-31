@@ -38,7 +38,7 @@ benchmark-parallel:
 
 ## report-sequential: Report benchmarks for sequential execution, 'NAME' variable can be provided
 .PHONY: report-sequential
-report-parallel:
+report-sequential:
 		@[ "${NAME}" ] || export NAME=${COMMIT}
 		${PYTHON_EXECUTABLE} benchmarks/report.py ${NAME}seq
 
@@ -50,7 +50,7 @@ report-parallel:
 
 .PHONY: notebook
 notebook:
-		NAME=${COMMIT} ${JUPYTER_EXECUTABLE} nbconvert --to html --execute --output benchmarks/results/index.html visualization.ipynb
+		${JUPYTER_EXECUTABLE} nbconvert --to html --execute --output benchmarks/results/index.html visualization.ipynb
 
 ## test: Launch all the test.
 .PHONY: test

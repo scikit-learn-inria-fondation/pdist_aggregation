@@ -19,7 +19,7 @@ dependencies:
   - pip:
       # Install cython 3 from upstream directly
       - -e git+https://github.com/cython/cython.git#egg=Cython
-      # Install fork of scikit-learn containing new implementations
+      # Install fork of scikit-learn containing par implementations
       - -e git+https://github.com/jjerphan/scikit-learn.git@pairwise_aggregation_cython#egg=scikit-learn
       # Install the project from source
       - -e ./src
