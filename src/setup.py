@@ -4,7 +4,7 @@ from setuptools import Extension, setup
 
 extensions = [
     Extension(
-        "pairwise_aggregation",
+        "pdist_aggregation",
         sources=["_argkmin_fast.pyx"],
         include_dirs=[numpy.get_include()],
         extra_compile_args=[
@@ -18,7 +18,7 @@ extensions = [
 ]
 
 setup(
-    name="pairwise_aggregation",
+    name="pdist_aggregation",
     cmdclass={"build_ext": build_ext},
     version="0.1",
     ext_modules=extensions,

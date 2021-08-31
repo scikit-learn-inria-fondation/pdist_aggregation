@@ -18,8 +18,8 @@ dependencies:
   - memory_profiler
   - pip:
       # Install cython 3 from upstream directly
-      - -e git+https://github.com/cython/cython.git#egg=cython
+      - -e git+https://github.com/cython/cython.git#egg=Cython
       # Install fork of scikit-learn containing new implementations
       - -e git+https://github.com/jjerphan/scikit-learn.git@pairwise_aggregation_cython#egg=scikit-learn
-      # Install pdist_aggregation from source
+      # Install the project from source
       - -e ./src

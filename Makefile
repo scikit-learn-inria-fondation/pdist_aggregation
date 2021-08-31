@@ -16,7 +16,7 @@ help: Makefile
 
 ## all: Run the main targets
 .PHONY: all
-all: install benchmark-parallel benchmark-sequential
+all: install benchmark-parallel benchmark-sequential report-parallel report-sequential
 
 ## install: Install conda env.
 .PHONY: install
@@ -35,6 +35,18 @@ benchmark-sequential:
 benchmark-parallel:
 		@[ "${NAME}" ] || export NAME=${COMMIT}
 		${PYTHON_EXECUTABLE} benchmarks/benchmark.py ${NAME}par
+
+## report-sequential: Report benchmarks for sequential execution, 'NAME' variable can be provided
+.PHONY: report-sequential
+report-parallel:
+		@[ "${NAME}" ] || export NAME=${COMMIT}
+		${PYTHON_EXECUTABLE} benchmarks/report.py ${NAME}seq
+
+## report-parallel: Report benchmarks for parallel execution, 'NAME' variable can be provided
+.PHONY: report-parallel
+report-parallel:
+		@[ "${NAME}" ] || export NAME=${COMMIT}
+		${PYTHON_EXECUTABLE} benchmarks/report.py ${NAME}par
 
 .PHONY: notebook
 notebook:
