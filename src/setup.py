@@ -23,6 +23,8 @@ setup(
     version="0.1",
     ext_modules=extensions,
     install_requires=[
+        # When using make, those should be installed in the env directly.
+        # Especially cython 3 (in pre-release) needs to be installed.
         "cython",
         "numpy>=1.20",
         "setuptools>=18.0",
