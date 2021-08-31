@@ -5,7 +5,7 @@ from setuptools import Extension, setup
 extensions = [
     Extension(
         "pdist_aggregation",
-        sources=["_pdist_aggregation.pyx"],
+        sources=["_argkmin_fast.pyx"],
         include_dirs=[numpy.get_include()],
         extra_compile_args=[
             "-fopenmp",
@@ -23,7 +23,9 @@ setup(
     version="0.1",
     ext_modules=extensions,
     install_requires=[
-        "cython>=3",
+        # When using make, those should be installed in the env directly.
+        # Especially cython 3 (in pre-release) needs to be installed.
+        "cython",
         "numpy>=1.20",
         "setuptools>=18.0",
         "scikit-learn>=0.24.2",
